@@ -1,14 +1,12 @@
 """
 Registro central de comandos de tkCAD.
 
-Añadir un comando nuevo = crear su archivo en la carpeta correcta
-+ agregarlo a ALL_COMMANDS. Nada más.
+Añadir un comando nuevo en el futuro =
+crear su archivo en la carpeta correcta + añadirlo a ALL_COMMANDS.
 """
 from typing import List, Type
 
 from ..core import Command
-from ..ayuda import HelpCommand
-from ..exitx import ExitCommand
 
 # Drawing
 from .drawing.line import LineCommand
@@ -36,6 +34,10 @@ from .file.nuevo import NewCommand
 # View
 from .view.seleccion import SelectCommand, ListCommand
 from .view.snap import SnapCommand, GridCommand, ShowGridCommand
+
+# System
+from .system.ayuda import HelpCommand
+from .system.exitx import ExitCommand
 
 
 ALL_COMMANDS: List[Type[Command]] = [
@@ -66,7 +68,7 @@ ALL_COMMANDS: List[Type[Command]] = [
     SnapCommand,
     GridCommand,
     ShowGridCommand,
-    # Sistema
+    # System
     HelpCommand,
     ExitCommand,
 ]

@@ -5,37 +5,13 @@ from typing import Optional, List, Dict, Type
 from enum import Enum, auto
 
 from .core import ALL_SNAP_MODES, TARGET_KIND_MAP, Command, CommandResult, Entity, Point, parse_number, parse_point
-from .commands.drawing.circulo import CircleCommand  # Asegúrate de que circulo.py esté en el mismo directorio o en el PYTHONPATH
-from .commands.drawing.arco import  ArcCommand
-from .commands.drawing.poligono import  PolygonCommand
-from .commands.drawing.elipse import  ElipseCommand
-from .commands.drawing.line import LineState, LineCommand
-from .commands.drawing.poliline import PolylineCommand
-
-from .commands.system.ayuda import HelpCommand
-from .commands.system.exitx import ExitCommand
-
-from .commands.view.seleccion import SelectCommand, ListCommand
-from .commands.view.snap import SnapCommand, GridCommand, ShowGridCommand
-
-from .commands.modify.mover import MoveCommand
-from .commands.modify.copiar import CopyCommand
-from .commands.modify.borrar import DeleteCommand
-from .commands.modify.rotar import RotateCommand
-from .commands.modify.escalar import ScaleCommand
-from .commands.modify.simetria import MirrorCommand
-from .commands.modify.recortar import TrimCommand
-from .commands.modify.extender import ExtendCommand
-
+from .commands.registry import register_all
 from .geometry import line_line_intersection, projection_param, EPS
 
 import json
 from pathlib import Path
 from tkinter import filedialog
 
-from .commands.file.guardar import SaveCommand, SaveAsCommand
-from .commands.file.abrir import OpenCommand
-from .commands.file.nuevo import NewCommand
 
 
 # ============================================================
@@ -143,7 +119,7 @@ class CommandLineManager:
                 self.active.start(self.ctx)
             else:
                 self.ctx.write(f"Comando no reconocido: {text}")
-                self.ctx.write("Comandos disponibles: LINEA, POLILINEA")
+                self.ctx.write("Comandos disponibles: " + ", ".join(self.get_available_command_names()))
                 self.ctx.prompt("Comando:")
 
             return
@@ -401,37 +377,8 @@ class CadApp:
         # Gestor de comandos
         self.manager = CommandLineManager(self)
         self.console.set_completion_callback(self.manager.get_completions)
-        self.manager.register(LineCommand)
-        self.manager.register(PolylineCommand)
-        self.manager.register(CircleCommand)  # Registrar el comando CIRCULO
-        self.manager.register(ArcCommand)  # Registrar el comando ARCO
-        self.manager.register(PolygonCommand)  # Registrar el comando POLIGONO
-        self.manager.register(ElipseCommand)  # Registrar el comando ELIPSE
-
-        self.manager.register(ExitCommand)  # Registrar el comando EXIT
-        self.manager.register(HelpCommand)  # Registrar el comando AYUDA
-
-        self.manager.register(SelectCommand)
-        self.manager.register(ListCommand)
-        self.manager.register(MoveCommand)
-
-        self.manager.register(DeleteCommand)
-        self.manager.register(CopyCommand)
-        self.manager.register(RotateCommand)
-
-        self.manager.register(ScaleCommand)
-        self.manager.register(MirrorCommand)
-        self.manager.register(TrimCommand)
-        self.manager.register(ExtendCommand)
-
-        self.manager.register(SaveCommand)
-        self.manager.register(SaveAsCommand)
-        self.manager.register(OpenCommand)
-        self.manager.register(NewCommand)
-
-        self.manager.register(SnapCommand)
-        self.manager.register(GridCommand)
-        self.manager.register(ShowGridCommand)
+        # self.manager.register(LineCommand) asi para todos o como sigue a continuacion
+        register_all(self.manager)
 
         self.write("Editor iniciado.")
         self.write("Escribe AYUDA o pulsa Tab para ver los comandos disponibles.")
