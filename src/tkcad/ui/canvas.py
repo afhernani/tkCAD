@@ -27,8 +27,10 @@ class CadCanvas(tk.Canvas):
         self.grip_size = 8
         self.grip_dragging = False
         self.active_grip = None
-
+        # seguir el puntero del ratón.
+        self.rubber_item = None
         # Eventos de ratón
+        self.bind("<Motion>", self._on_motion)
         # self.bind("<Configure>", lambda e: self.redraw())
         self.bind("<ButtonPress-1>", self._on_select_press)
         self.bind("<B1-Motion>", self._on_select_motion)
@@ -65,6 +67,7 @@ class CadCanvas(tk.Canvas):
 
     def redraw(self):
         self.delete("all")
+        self.rubber_item = None
         self.item_to_entity = {}
         # dibujar malla de fondo
         self._draw_grid()
@@ -248,7 +251,6 @@ class CadCanvas(tk.Canvas):
         
         # Grips
         self._draw_grips()
-
 
     def _draw_grid(self):
         """Método para dibujar la malla de fondo en el canvas."""
@@ -875,6 +877,26 @@ class CadCanvas(tk.Canvas):
 
         if hasattr(self, "console"):
             self.app.console.entry.focus_set()
+
+    def _on_motion(self, event):
+        pts = getattr(self.app, "preview_points", None)
+        if not pts:
+            if self.rubber_item is not None and self.type(self.rubber_item) is not None:
+                self.delete(self.rubber_item)
+            self.rubber_item = None
+            return
+        last = pts[-1]
+        raw = self.canvas_to_world(event.x, event.y)
+        p, _ = self.app.snap_point(raw, base_point=last)
+        x1, y1 = self.world_to_canvas(last)
+        x2, y2 = self.world_to_canvas(p)
+        if self.rubber_item is None or self.type(self.rubber_item) is None:
+            self.rubber_item = self.create_line(
+                x1, y1, x2, y2,
+                fill="yellow", width=1, dash=(4, 4),
+            )
+        else:
+            self.coords(self.rubber_item, x1, y1, x2, y2)
        
     # end métodos usados por los bins.
 
