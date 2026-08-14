@@ -1,5 +1,5 @@
 
-from .core import Command, CommandResult
+from ...core import Command, CommandResult
 
 class HelpCommand(Command):
     name = "AYUDA"

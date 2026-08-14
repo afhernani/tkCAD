@@ -4,7 +4,6 @@ from tkinter.scrolledtext import ScrolledText
 from typing import Optional, List, Dict, Type
 from enum import Enum, auto
 
-from .ayuda import HelpCommand
 from .core import ALL_SNAP_MODES, TARGET_KIND_MAP, Command, CommandResult, Entity, Point, parse_number, parse_point
 from .commands.drawing.circulo import CircleCommand  # Asegúrate de que circulo.py esté en el mismo directorio o en el PYTHONPATH
 from .commands.drawing.arco import  ArcCommand
@@ -13,7 +12,8 @@ from .commands.drawing.elipse import  ElipseCommand
 from .commands.drawing.line import LineState, LineCommand
 from .commands.drawing.poliline import PolylineCommand
 
-from .exitx import ExitCommand
+from .commands.system.ayuda import HelpCommand
+from .commands.system.exitx import ExitCommand
 
 from .commands.view.seleccion import SelectCommand, ListCommand
 from .commands.view.snap import SnapCommand, GridCommand, ShowGridCommand

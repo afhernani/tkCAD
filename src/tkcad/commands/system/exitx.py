@@ -1,4 +1,4 @@
-from .core import Command, CommandResult
+from ...core import Command, CommandResult
 
 class ExitCommand(Command):
     name = "EXIT"
