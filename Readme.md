@@ -37,7 +37,7 @@ python app.py
 ## 🗂️ Estructura del proyecto
 
 ```textile
-Bixcoot/
+tkCAD/
 ├── app.py          # Ventana principal, consola, gestor de comandos, LINEA, POLILINEA, AYUDA, EXIT
 ├── core.py         # Base común: Point, Entity, Command, CommandResult, parsers, alias y tipos
 ├── geometria.py    # Utilidades: intersección recta-recta, proyecciones, EPS
@@ -60,8 +60,6 @@ Bixcoot/
 ├── snap.py         # SNAP, MALLA y VERMALLA
 └── Readme.md
 ```
-
-
 
 ## ⌨️ Ventana de comandos
 
@@ -278,5 +276,3 @@ plano.json
 ---
 
 *Proyecto en desarrollo — Bixcoot.*
-
-
