@@ -35,7 +35,6 @@ class CadCanvas(tk.Canvas):
         self.bind("<ButtonRelease-1>", self._on_select_release)
         self.bind("<Button-3>", self._on_canvas_right_click)
 
-    # >>> PEGA AQUÍ LOS MÉTODOS QUE MOVEMOS (Paso 2) <<<
     
     def world_to_canvas(self, p: Point):
         """
@@ -233,6 +232,20 @@ class CadCanvas(tk.Canvas):
                 width=1,
                 dash=(4, 4),
             )
+
+        # Vista previa de polilínea en construcción
+        preview_points = getattr(self.app, "preview_points", None)
+        if preview_points and len(preview_points) >= 2:
+            coords = []
+            for p in preview_points:
+                coords.extend(self.world_to_canvas(p))
+            self.create_line(
+                *coords,
+                fill="yellow",
+                width=1,
+                dash=(4, 4),
+            )
+        
         # Grips
         self._draw_grips()
 

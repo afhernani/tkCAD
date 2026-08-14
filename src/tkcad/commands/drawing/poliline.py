@@ -44,6 +44,7 @@ class PolylineCommand(Command):
                 return CommandResult.RUNNING
 
             self.points.append(p)
+            ctx.show_preview_polyline(self.points)
             ctx.write(f"Primer punto: {p}")
             ctx.prompt("Siguiente punto [Enter=terminar / C=cerrar]:")
             return CommandResult.RUNNING
@@ -68,12 +69,14 @@ class PolylineCommand(Command):
             return CommandResult.RUNNING
 
         self.points.append(p)
+        ctx.show_preview_polyline(self.points)
         ctx.write(f"Punto añadido: {p}")
         ctx.prompt("Siguiente punto [Enter=terminar / C=cerrar]:")
 
         return CommandResult.RUNNING
 
     def _finish(self, ctx) -> CommandResult:
+        ctx.clear_preview()
         if len(self.points) >= 2:
             ctx.add_polyline(self.points)
             ctx.write(f"Polilínea creada con {len(self.points)} puntos.")

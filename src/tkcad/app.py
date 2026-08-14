@@ -30,6 +30,7 @@ class CadApp:
         self.current_file = None
 
         self.preview_line = None
+        self.preview_points = None
 
         self.snap_modes = {
             "GRID",
@@ -790,12 +791,18 @@ class CadApp:
             selected=False,
         )
     # end json encode/decode
+
+    def show_preview_polyline(self, points: list):
+        self.preview_points = list(points)
+        self.redraw()
+
     def show_preview_line(self, start: Point, end: Point):
         self.preview_line = (start, end)
         self.redraw()
 
     def clear_preview(self):
         self.preview_line = None
+        self.preview_points = None
         self.redraw()
     # exit app
     def exit_app(self):
@@ -954,6 +961,9 @@ class CadApp:
 
         if hasattr(self, "preview_line"):
             self.preview_line = None
+
+        if hasattr(self, "preview_points"):
+            self.preview_points = None
 
         self.redraw()
 
