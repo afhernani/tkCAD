@@ -1,2 +1,4 @@
 
-EPS = 1e-9
+from ..core.types import EPS
+
+# EPS = 1e-9

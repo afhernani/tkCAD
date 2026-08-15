@@ -1,4 +1,4 @@
-
+EPS = 1e-9
 
 ALL_SNAP_MODES = [
     "GRID",
