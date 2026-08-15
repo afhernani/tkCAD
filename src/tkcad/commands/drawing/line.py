@@ -59,6 +59,8 @@ class LineCommand(Command):
             self.last = p
             self.state = LineState.NEXT_POINT
 
+            ctx.show_preview_polyline([p]) # ancha del hilo elástico.
+
             ctx.write(f"Primer punto: {p}")
             ctx.prompt(
                 "Siguiente punto [@dx,dy / @dist<ángulo / L=longitud / A=ángulo / Enter=terminar]:"
@@ -151,6 +153,7 @@ class LineCommand(Command):
         ctx.write(f"Línea creada: {self.last} -> {p}")
 
         self.last = p
+        ctx.show_preview_polyline([p])  
         self.state = LineState.NEXT_POINT
 
         ctx.prompt(

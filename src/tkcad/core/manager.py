@@ -85,6 +85,7 @@ class CommandLineManager:
                 result = self.active.handle_input(self.ctx, "")
                 if result == CommandResult.FINISHED:
                     self.active = None
+                    self.ctx.clear_preview()
                     self.ctx.prompt("Comando:")
             return
 
@@ -119,6 +120,7 @@ class CommandLineManager:
 
         if result == CommandResult.FINISHED:
             self.active = None
+            self.ctx.clear_preview()
             self.ctx.prompt("Comando:")
 
     def is_waiting_for_point(self) -> bool:
