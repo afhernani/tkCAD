@@ -34,7 +34,6 @@ cd tkCAD
 # Instalar el entorno (crea .pixi/ con todas las dependencias)
 
 pixi install
-
 ```
 
 ---------
@@ -360,7 +359,6 @@ Cubiertos actualmente:
 MIT
 
 ```adoc
-
 ---
 
 ## Paso siguiente
@@ -412,7 +410,5 @@ git commit -m "docs: README completo con arquitectura y guía para añadir coman
 - Autoguardado.
 
 ---
-
-
 
 *Proyecto en desarrollo — Bixcoot.*
