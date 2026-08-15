@@ -646,4 +646,114 @@ class Document:
         self.notify_change()
 
         return len(entities)
- 
+
+    # --------------------------------------------------------
+    # Edición topológica (trim / extend)
+    # --------------------------------------------------------
+
+    def trim_line_by_line(self, limit_id: int, target_id: int, keep_point: Point):
+        # Import perezoso: geometry importa de core, así que core
+        # no puede importar geometry a nivel de módulo (circular).
+        from ..geometry import line_line_intersection, projection_param
+
+        limit = self.get_entity_by_id(limit_id)
+        target = self.get_entity_by_id(target_id)
+
+        if limit is None or target is None:
+            return False, "Entidad no encontrada."
+
+        if limit.kind != "line" or target.kind != "line":
+            return False, "Por ahora RECORTAR solo soporta LINEA con límite LINEA."
+
+        if limit_id == target_id:
+            return False, "La entidad límite y la entidad a recortar no pueden ser la misma."
+
+        a = limit.data["start"]
+        b = limit.data["end"]
+
+        c = target.data["start"]
+        d = target.data["end"]
+
+        inter = line_line_intersection(a, b, c, d)
+
+        if inter is None:
+            return False, "Las líneas no se cortan."
+
+        p, t_limit, u_target = inter
+
+        # La intersección debe estar dentro del segmento límite.
+        if not (-EPS <= t_limit <= 1.0 + EPS):
+            return False, "La intersección está fuera de la línea límite."
+
+        # La línea a recortar debe cruzar el límite.
+        if not (EPS <= u_target <= 1.0 - EPS):
+            return False, "La línea a recortar no cruza el límite correctamente."
+
+        # Decidimos qué parte conservar.
+        keep_t = projection_param(keep_point, c, d)
+
+        if abs(keep_t - u_target) < EPS:
+            return False, "El punto a conservar está demasiado cerca del punto de corte."
+
+        if keep_t < u_target:
+            # Conservamos desde el inicio original hasta el corte.
+            target.data["start"] = c
+            target.data["end"] = p
+        else:
+            # Conservamos desde el corte hasta el final original.
+            target.data["start"] = p
+            target.data["end"] = d
+
+        self.notify_change()
+
+        return True, "Entidad recortada correctamente."
+    
+    def extend_line_to_line(self, limit_id: int, target_id: int):
+        # Import perezoso: geometry importa de core, así que core
+        # no puede importar geometry a nivel de módulo (circular).
+        from ..geometry import line_line_intersection
+
+        limit = self.get_entity_by_id(limit_id)
+        target = self.get_entity_by_id(target_id)
+
+        if limit is None or target is None:
+            return False, "Entidad no encontrada."
+
+        if limit.kind != "line" or target.kind != "line":
+            return False, "Por ahora EXTENDER solo soporta LINEA con límite LINEA."
+
+        if limit_id == target_id:
+            return False, "La entidad límite y la entidad a extender no pueden ser la misma."
+
+        a = limit.data["start"]
+        b = limit.data["end"]
+
+        c = target.data["start"]
+        d = target.data["end"]
+
+        inter = line_line_intersection(a, b, c, d)
+
+        if inter is None:
+            return False, "Las líneas no se cortan."
+
+        p, t_limit, u_target = inter
+
+        # La intersección debe estar dentro del segmento límite.
+        if not (-EPS <= t_limit <= 1.0 + EPS):
+            return False, "La intersección está fuera de la línea límite."
+
+        # Si u_target está entre 0 y 1, la línea ya cruza el límite.
+        if -EPS <= u_target <= 1.0 + EPS:
+            return False, "La línea ya cruza la entidad límite."
+
+        # Si u_target < 0, extendemos el punto inicial.
+        if u_target < -EPS:
+            target.data["start"] = p
+
+        # Si u_target > 1, extendemos el punto final.
+        else:
+            target.data["end"] = p
+
+        self.notify_change()
+
+        return True, "Entidad extendida correctamente."
