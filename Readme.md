@@ -2,64 +2,67 @@
 
 tkCAD es un editor de dibujo tipo CAD 2D construido con **Python** y **Tkinter**, con una ventana de comandos estilo CAD, entrada de puntos por teclado y ratón, snaps, selección por ventana, grips de edición y proyectos guardables en JSON.
 
----
-
-## ✨ Características principales
-
-- **Ventana de comandos** integrada con historial, autocompletado (`Tab`) y ayuda.
-- **Comandos de dibujo**: línea, polilínea, círculo, arco, polígono y elipse.
-- **Comandos de edición**: mover, copiar, borrar, rotar, escalar, simetría, recortar y extender.
-- **Sistema de selección**: por ID, por tipo, todo/nada/último, por ventana (window/crossing) y por clic.
-- **Grips (pinzamientos)** azules para editar vértices, radios, ejes y extremos de arco con el ratón.
-- **Snaps**: malla (grid), punto, extremo, punto medio, intersección y modo ortogonal.
-- **Entrada de puntos** por teclado (absolutos, relativos, polares) y por ratón con snap aplicado.
-- **Proyectos** guardables y cargables en formato **JSON**.
-- **Modelo de entidades unificado** con IDs y estado de selección.
+![tkCAD](docs/screenshot.png)
 
 ---
 
-## 📦 Requisitos
+## ✨ Características
 
-- Python 3.8 o superior.
-- Tkinter (incluido con Python en Windows y macOS; en Linux: `sudo apt install python3-tk`).
-- Sin dependencias de terceros.
+- 🖱️ **Interfaz** con consola de comandos, canvas y grips interactivos
+- 📐 **Dibujo**: línea, polilínea, círculo, arco, polígono, elipse
+- 🛠️ **Edición**: mover, copiar, borrar, rotar, escalar, simetría, recortar, extender
+- 🎯 **Snaps**: punto, extremo, punto medio, intersección, ortogonal, cuadrícula
+- 📁 **Archivos**: guardar/cargar proyectos en JSON
+- 🧠 **Autocompletado** con `Tab` y **historial** con flechas
+- 🎨 **Vista previa progresiva** al dibujar polilíneas
 
----
+## 📦 Instalación
 
-## 🚀 Ejecución
+### Requisitos
+
+- [Pixi](https://pixi.sh/) instalado
+- Windows 64-bit (otras plataformas con ajustes en `pixi.toml`)
+
+### Pasos
 
 ```bash
-python app.py
+# Clonar el repositorio
+
+git clone https://github.com/TU_USUARIO/tkCAD.git
+cd tkCAD
+
+# Instalar el entorno (crea .pixi/ con todas las dependencias)
+
+pixi install
+
+```
+
+---------
+
+## 🚀 Uso
+
+## Ejecutar la aplicación
+
+```bash
+pixi run app
+```
+
+Esto lanza la app con `python -m tkcad`. El paquete se instala en modo editable, así que cualquier cambio en `src/tkcad/` se refleja al instante sin reinstalar.
+
+### Entrar al entorno interactivo
+
+```bash
+pixi shell
+python -m tkcad
+```
+
+### Ejecutar los tests
+
+```bash
+pixi run test
 ```
 
 ---
-
-## 🗂️ Estructura del proyecto
-
-```textile
-tkCAD/
-├── app.py          # Ventana principal, consola, gestor de comandos, LINEA, POLILINEA, AYUDA, EXIT
-├── core.py         # Base común: Point, Entity, Command, CommandResult, parsers, alias y tipos
-├── geometria.py    # Utilidades: intersección recta-recta, proyecciones, EPS
-├── circulo.py      # CIRCULO
-├── arco.py         # ARCO
-├── poligono.py     # POLIGONO
-├── elipse.py       # ELIPSE
-├── mover.py        # MOVER
-├── copiar.py       # COPIAR
-├── borrar.py       # BORRAR
-├── rotar.py        # ROTAR
-├── escalar.py      # ESCALAR
-├── simetria.py     # SIMETRIA
-├── recortar.py     # RECORTAR
-├── extender.py     # EXTENDER
-├── seleccion.py    # SELECCIONAR y LISTAR
-├── guardar.py      # GUARDAR y GUARDARCOMO
-├── abrir.py        # ABRIR
-├── nuevo.py        # NUEVO
-├── snap.py         # SNAP, MALLA y VERMALLA
-└── Readme.md
-```
 
 ## ⌨️ Ventana de comandos
 
@@ -223,6 +226,166 @@ Esto permite que **todos** los comandos (mover, copiar, rotar, escalar, simetrí
 
 ---
 
+## 🏗️ Arquitectura
+
+```bash
+tkCAD/
+├── pixi.toml           # Configuración del entorno y tareas
+├── pyproject.toml      # Paquete Python (editable install)
+├── README.md
+│
+├── src/
+│   └── tkcad/
+│       ├── __main__.py         # Entry point: python -m tkcad
+│       ├── app.py              # CadApp: orquestador y modelo
+│       │
+│       ├── core/               # Núcleo (sin UI)
+│       │   ├── command.py      # Command, CommandResult
+│       │   ├── entity.py       # Entity
+│       │   ├── manager.py      # CommandLineManager
+│       │   ├── parser.py       # parse_point, parse_number
+│       │   ├── point.py        # Point
+│       │   ├── project.py      # ProjectIO (JSON)
+│       │   ├── snapengine.py   # SnapEngine
+│       │   └── types.py        # Alias de comandos, constantes
+│       │
+│       ├── geometry/           # Utilidades geométricas
+│       │   ├── intersection.py # line_line_intersection
+│       │   ├── projection.py   # projection_param
+│       │   └── utils.py        # EPS
+│       │
+│       ├── commands/           # Un archivo por comando
+│       │   ├── registry.py     # Registro central de comandos
+│       │   ├── drawing/        # LINEA, POLILINEA, CIRCULO, ...
+│       │   ├── modify/         # MOVER, COPIAR, ROTAR, ...
+│       │   ├── file/           # GUARDAR, ABRIR, NUEVO
+│       │   ├── view/           # SELECCIONAR, SNAP, MALLA
+│       │   └── system/         # AYUDA, EXIT
+│       │
+│       └── ui/                 # Widgets Tkinter
+│           ├── canvas.py       # CadCanvas
+│           ├── console.py      # ConsoleWidget
+│           └── grips.py        # GripManager
+│
+└── tests/                      # Suite de pytest
+    ├── test_geometry.py
+    ├── test_manager.py
+    ├── test_parser.py
+    ├── test_projectio.py
+    └── test_snapengine.py
+```
+
+El núcleo (`core/`, `geometry/`, `commands/`) es **independiente de Tkinter** y completamente testeable con `pixi run test`.
+
+## ➕ Añadir un comando nuevo
+
+Añadir un comando nuevo requiere **dos pasos**:
+
+### 1. Crear el archivo del comando
+
+Crea, por ejemplo, `src/tkcad/commands/drawing/spline.py`:
+
+```python
+from ...core import Command, CommandResult, Point, parse_point
+
+
+class SplineCommand(Command):
+    name = "SPLINE"
+    aliases = ("SPL",)
+
+    def __init__(self):
+        self.points = []
+
+    def start(self, ctx):
+        ctx.prompt("Primer punto de la spline:")
+
+    def handle_input(self, ctx, text: str) -> CommandResult:
+        text = text.strip()
+        if not text:
+            return self._finish(ctx)
+        try:
+            p = parse_point(text, self.points[-1] if self.points else None)
+        except ValueError as ex:
+            ctx.write(f"Punto no válido: {ex}")
+            return CommandResult.RUNNING
+        self.points.append(p)
+        ctx.prompt("Siguiente punto [Enter=terminar]:")
+        return CommandResult.RUNNING
+
+    def _finish(self, ctx) -> CommandResult:
+        if len(self.points) >= 2:
+            ctx.add_polyline(self.points)  # o un método específico
+        return CommandResult.FINISHED
+
+    def expects_point(self) -> bool:
+        return True
+
+    def get_point_base(self):
+        return self.points[-1] if self.points else None
+```
+
+### 2. Registrarlo en `src/tkcad/commands/registry.py`
+
+Añade el import y súmalo a la lista `ALL_COMMANDS`:
+
+```python
+from .drawing.spline import SplineCommand
+
+ALL_COMMANDS = [
+    # ... comandos existentes ...
+    SplineCommand,
+]
+```
+
+**Listo.** `SPLINE` y su alias `SPL` aparecen automáticamente en el autocompletado y en `AYUDA`.
+
+## 🧪 Testing
+
+La suite de tests protege los módulos del núcleo:
+
+```bash
+
+```
+
+Cubiertos actualmente:
+
+- Parser de puntos (cartesianos, relativos, polares)
+- Geometría (intersecciones, proyecciones)
+- Motor de snaps (GRID, ENDPOINT, MIDPOINT, INTERSECTION, ORTHO)
+- Gestor de comandos (registro, alias, autocompletado)
+- ProjectIO (round-trip JSON, save/load)
+
+## 📜 Licencia
+
+MIT
+
+```adoc
+
+---
+
+## Paso siguiente
+
+1. Crea también la carpeta `docs/` y dentro deja un `screenshot.png` (puedes poner una captura de la app cuando quieras).
+2. Añade al `.gitignore` si no lo tenías:
+
+```gitignore
+# Screenshots generadas
+*.png
+# ... pero no docs/screenshot.png
+```
+
+(o simplemente no ignores PNG si quieres incluirlo en el repo).
+
+3. Ejecuta:
+
+```bash
+pixi run test    # por si acaso nada se rompió
+git add .
+git commit -m "docs: README completo con arquitectura y guía para añadir comandos"
+```
+
+----
+
 ## ⚠️ Limitaciones conocidas
 
 - `RECORTAR` y `EXTENDER` solo funcionan entre `LINEA` y límite `LINEA`.
@@ -250,98 +413,6 @@ Esto permite que **todos** los comandos (mover, copiar, rotar, escalar, simetrí
 
 ---
 
-## 📝 Ejemplo de uso básico
 
-```tex
-LINEA
-0,0
-@100<0
-Enter
-
-CIRCULO
-50,50
-25
-
-SELECCIONAR
-TODO
-
-MOVER
-0,0
-@50,25
-
-GUARDAR
-plano.json
-```
-
----
-
-## Estado actual del proyecto a 15/08/2026
-
-Con esta extracción, `app.py` se ha reducido ~200 líneas y el motor de snaps ahora es:
-
-- **Testeable en aislamiento** (sin abrir Tkinter)
-- **Reutilizable** (podrías usarlo en otro contexto)
-- **Independiente** (no conoce la UI ni el canvas)
-
-La estructura actual es muy limpia:
-
-```tex
-src/tkcad/
-├── core/
-│   ├── point.py
-│   ├── entity.py
-│   ├── command.py
-│   ├── parser.py
-│   ├── types.py
-│   ├── manager.py          ✅ CommandLineManager
-│   └── snapengine.py       ✅ SnapEngine (nuevo)
-│
-├── geometry/
-│   ├── intersection.py
-│   ├── projection.py
-│   └── utils.py
-│
-├── commands/
-│   ├── drawing/
-│   ├── modify/
-│   ├── file/
-│   ├── view/
-│   └── system/
-│
-├── ui/
-│   ├── console.py
-│   └── canvas.py
-│
-└── app.py                  (mucho más ligero)
-```
-
-## Agrupacion de grips la arquitectura.
-
-```bash
-src/tkcad/
-├── core/          → point, entity, command, parser, types, manager, snapengine
-├── geometry/      → intersection, projection, utils
-├── commands/      → drawing, modify, file, view, system + registry
-├── ui/            → console, canvas, grips
-└── app.py         → orquestador + modelo
-```
-
-`app.py` ahora concentra básicamente el **modelo** (entidades, transformaciones, selección) y la orquestación.
-
----
-
-### Añadido de ProjectIO en core
-
-#### Lo que hemos ganado
-
-- **Formato de archivo versionado y centralizado** (`VERSION = 1`): el día que cambies el formato, migraciones en un solo sitio.
-- **`ProjectIO` testeable sin Tkinter**: perfecto para estrenar la Opción A mañana.
-- `app.py` pierde ~120 líneas más.
-
-------
-
-
-
----------
 
 *Proyecto en desarrollo — Bixcoot.*
