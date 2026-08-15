@@ -275,4 +275,48 @@ plano.json
 
 ---
 
+## Estado actual del proyecto a 15/08/2026
+
+Con esta extracción, `app.py` se ha reducido ~200 líneas y el motor de snaps ahora es:
+
+- **Testeable en aislamiento** (sin abrir Tkinter)
+- **Reutilizable** (podrías usarlo en otro contexto)
+- **Independiente** (no conoce la UI ni el canvas)
+
+La estructura actual es muy limpia:
+
+```tex
+src/tkcad/
+├── core/
+│   ├── point.py
+│   ├── entity.py
+│   ├── command.py
+│   ├── parser.py
+│   ├── types.py
+│   ├── manager.py          ✅ CommandLineManager
+│   └── snapengine.py       ✅ SnapEngine (nuevo)
+│
+├── geometry/
+│   ├── intersection.py
+│   ├── projection.py
+│   └── utils.py
+│
+├── commands/
+│   ├── drawing/
+│   ├── modify/
+│   ├── file/
+│   ├── view/
+│   └── system/
+│
+├── ui/
+│   ├── console.py
+│   └── canvas.py
+│
+└── app.py                  (mucho más ligero)
+```
+
+
+
+---------
+
 *Proyecto en desarrollo — Bixcoot.*
