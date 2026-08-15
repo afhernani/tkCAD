@@ -9,6 +9,7 @@ from tkcad.core import (
 class FakeCtx:
     def __init__(self):
         self.messages = []
+        self.preview_cleared = 0
 
     def write(self, text):
         self.messages.append(text)
@@ -17,7 +18,7 @@ class FakeCtx:
         self.messages.append(text)
 
     def clear_preview(self):
-        pass
+        self.preview_cleared += 1
 
 
 class DummyCommand(Command):
@@ -86,3 +87,20 @@ def test_send_point_envia_coordenadas():
     manager.process_input("DUMMY")
     manager.send_point(Point(1.5, 2.5))
     assert manager.active.received[-1] == "1.500000;2.500000"
+
+def test_terminar_comando_limpia_preview():
+    ctx = FakeCtx()
+    manager = CommandLineManager(ctx)
+    manager.register(DummyCommand)
+
+    # Arrancamos el comando: todavía no debe haber limpieza
+    manager.process_input("DUMMY")
+    assert ctx.preview_cleared == 0
+
+    # "FIN" hace que DummyCommand devuelva FINISHED
+    manager.process_input("FIN")
+
+    # El manager lo desactiva...
+    assert manager.active is None
+    # ...y le pidió al contexto que limpiara el preview
+    assert ctx.preview_cleared == 1
