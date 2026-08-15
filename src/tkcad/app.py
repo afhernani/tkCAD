@@ -4,14 +4,14 @@ import tkinter as tk
 # from enum import Enum, auto
 from .core import (ALL_SNAP_MODES, TARGET_KIND_MAP, Command, CommandResult, 
                    Entity, Point, parse_number, parse_point, CommandLineManager,
-                   SnapEngine
+                   SnapEngine, ProjectIO,
 )
 from .commands.registry import register_all
 from .geometry import line_line_intersection, projection_param, EPS
 from .ui.console import ConsoleWidget
 from .ui.canvas import CadCanvas
 from .ui.grips import GripManager
-import json
+# import json
 from pathlib import Path
 from tkinter import filedialog
 
@@ -63,6 +63,8 @@ class CadApp:
         self.console.set_completion_callback(self.manager.get_completions)
         # self.manager.register(LineCommand) asi para todos o como sigue a continuacion
         register_all(self.manager)
+
+        self.project_io = ProjectIO()
 
         self.write("Editor iniciado.")
         self.write("Escribe AYUDA o pulsa Tab para ver los comandos disponibles.")
@@ -738,63 +740,6 @@ class CadApp:
         self.redraw()
 
         return True, "Entidad extendida correctamente."
-    # json encode/decode
-    def _encode_value(self, value):
-        if isinstance(value, Point):
-            return {
-                "__type__": "Point",
-                "x": value.x,
-                "y": value.y,
-            }
-
-        if isinstance(value, list):
-            return [self._encode_value(item) for item in value]
-
-        return value
-
-    def _decode_value(self, value):
-        if isinstance(value, dict):
-            if value.get("__type__") == "Point":
-                return Point(
-                    float(value["x"]),
-                    float(value["y"]),
-                )
-
-            return value
-
-        if isinstance(value, list):
-            return [self._decode_value(item) for item in value]
-
-        return value
-
-    def _entity_to_dict(self, entity):
-        return {
-            "id": entity.id,
-            "kind": entity.kind,
-            "data": {
-                key: self._encode_value(value)
-                for key, value in entity.data.items()
-            },
-        }
-
-    def _entity_from_dict(self, data):
-        entity_id = int(data["id"])
-        kind = str(data["kind"])
-
-        raw_data = data.get("data", {})
-
-        decoded_data = {
-            key: self._decode_value(value)
-            for key, value in raw_data.items()
-        }
-
-        return Entity(
-            id=entity_id,
-            kind=kind,
-            data=decoded_data,
-            selected=False,
-        )
-    # end json encode/decode
 
     def show_preview_polyline(self, points: list):
         self.preview_points = list(points)
@@ -824,7 +769,7 @@ class CadApp:
             if filepath is None:
                 # Guardar normal: si hay archivo actual, usarlo
                 if self.current_file is not None and not force_dialog:
-                    path = self.current_file
+                    path = Path(self.current_file)
 
                 # Guardar como / sin archivo actual: diálogo
                 else:
@@ -832,8 +777,8 @@ class CadApp:
                     initialfile = "proyecto.json"
 
                     if self.current_file is not None:
-                        initialdir = str(self.current_file.parent)
-                        initialfile = self.current_file.name
+                        initialdir = str(Path(self.current_file).parent)
+                        initialfile = Path(self.current_file).name
 
                     selected = filedialog.asksaveasfilename(
                         parent=self.root,
@@ -855,40 +800,13 @@ class CadApp:
             else:
                 path = Path(filepath).expanduser()
 
-                if path.suffix == "":
-                    path = path.with_suffix(".json")
-
-            # ----------------------------------------------------
-            # Preparar datos
-            # ----------------------------------------------------
-            project_data = {
-                "version": 1,
-                "next_entity_id": self.next_entity_id,
-                "entities": [
-                    self._entity_to_dict(entity)
-                    for entity in self.entities
-                ],
-            }
-
-            # Crear carpetas si no existen
-            path.parent.mkdir(parents=True, exist_ok=True)
-
-            text = json.dumps(
-                project_data,
-                indent=2,
-                ensure_ascii=False,
+            # Guardar de verdad (ProjectIO)
+            path = self.project_io.save(
+                path, self.entities, self.next_entity_id
             )
-
-            path.write_text(text, encoding="utf-8")
-
             self.current_file = path
-
-            self.root.title(
-                f"Editor - {path.name}"
-            )
-
+            self.root.title(f"Editor - {path.name}")
             return True, f"Proyecto guardado en: {path}"
-
         except Exception as ex:
             return False, f"Error al guardar: {ex}"
 
@@ -912,48 +830,13 @@ class CadApp:
             else:
                 path = Path(filepath).expanduser()
 
-                # Si escribe "plano" y existe "plano.json"
-                if not path.exists() and path.suffix == "":
-                    alternative = path.with_suffix(".json")
-
-                    if alternative.exists():
-                        path = alternative
-
-            if not path.exists():
-                return False, f"No existe el archivo: {path}"
-
-            text = path.read_text(encoding="utf-8")
-            project_data = json.loads(text)
-
-            entities = []
-            max_id = 0
-
-            for entity_data in project_data.get("entities", []):
-                entity = self._entity_from_dict(entity_data)
-                entities.append(entity)
-
-                if entity.id > max_id:
-                    max_id = entity.id
-
+            entities, next_id, path = self.project_io.load(path)
             self.entities = entities
-
-            next_id = project_data.get("next_entity_id")
-
-            if not isinstance(next_id, int) or next_id <= max_id:
-                next_id = max_id + 1
-
             self.next_entity_id = next_id
-
             self.current_file = path
-
             self.redraw()
-
-            self.root.title(
-                f"Editor - {path.name}"
-            )
-
+            self.root.title(f"Editor - {path.name}")
             return True, f"Proyecto abierto: {path}"
-
         except Exception as ex:
             return False, f"Error al abrir: {ex}"
 

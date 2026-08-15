@@ -315,6 +315,21 @@ src/tkcad/
 └── app.py                  (mucho más ligero)
 ```
 
+## Agrupacion de grips la arquitectura.
+
+```bash
+src/tkcad/
+├── core/          → point, entity, command, parser, types, manager, snapengine
+├── geometry/      → intersection, projection, utils
+├── commands/      → drawing, modify, file, view, system + registry
+├── ui/            → console, canvas, grips
+└── app.py         → orquestador + modelo
+```
+
+`app.py` ahora concentra básicamente el **modelo** (entidades, transformaciones, selección) y la orquestación.
+
+---
+
 
 
 ---------
