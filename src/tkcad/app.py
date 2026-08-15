@@ -10,6 +10,7 @@ from .commands.registry import register_all
 from .geometry import line_line_intersection, projection_param, EPS
 from .ui.console import ConsoleWidget
 from .ui.canvas import CadCanvas
+from .ui.grips import GripManager
 import json
 from pathlib import Path
 from tkinter import filedialog
@@ -47,7 +48,8 @@ class CadApp:
 
         # Canvas
         self.canvas = CadCanvas(root)
-        
+        self.grip_manager = GripManager(self.canvas, self)
+        self.canvas.grip_manager = self.grip_manager
         self.canvas.app = self
         self.canvas.pack(fill="both", expand=True)
         self.canvas.bind("<Configure>", lambda e: self.canvas.redraw())
