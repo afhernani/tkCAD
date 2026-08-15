@@ -4,7 +4,7 @@ import tkinter as tk
 # from enum import Enum, auto
 from .core import (ALL_SNAP_MODES, TARGET_KIND_MAP, Command, CommandResult, 
                    Entity, Point, parse_number, parse_point, CommandLineManager,
-                   SnapEngine, ProjectIO,
+                   SnapEngine, ProjectIO, Document,
 )
 from .commands.registry import register_all
 from .geometry import line_line_intersection, projection_param, EPS
@@ -20,15 +20,16 @@ from tkinter import filedialog
 # Aplicación principal
 # ============================================================
 
-class CadApp:
+class CadApp(Document):
     def __init__(self, root: tk.Tk):
+        super().__init__()
         self.root = root
         root.title("Editor con ventana de comandos")
         root.geometry("900x600")
         root.protocol("WM_DELETE_WINDOW", self._close_window)
         
-        self.entities = []
-        self.next_entity_id = 1
+        # self.entities = []
+        # self.next_entity_id = 1
         self.current_file = None
 
         self.preview_line = None
@@ -150,25 +151,6 @@ class CadApp:
             or bbox[1] > rect[3]
         )    
     # end seleccion por ventana
-    # Añadir y quitar ids de selección
-    def add_selection_ids(self, ids):
-        ids_set = set(ids)
-
-        for entity in self.entities:
-            if entity.id in ids_set:
-                entity.selected = True
-
-        self.redraw()
-
-    def remove_selection_ids(self, ids):
-        ids_set = set(ids)
-
-        for entity in self.entities:
-            if entity.id in ids_set:
-                entity.selected = False
-
-        self.redraw()    
-    # end añadir y quitar ids de selección
 
     # --------------------------------------------------------
     # Métodos usados por los comandos
@@ -186,185 +168,6 @@ class CadApp:
     def get_command_help(self):
         return self.manager.get_available_command_help()
 
-    def add_entity(self, kind: str, data: dict, redraw: bool = True) -> Entity:
-        entity = Entity(
-            id=self.next_entity_id,
-            kind=kind,
-            data=data,
-            selected=False,
-        )
-
-        self.next_entity_id += 1
-        self.entities.append(entity)
-
-        if redraw:
-            self.redraw()
-
-        return entity
-
-    def add_line(self, start: Point, end: Point):
-        self.add_entity(
-            "line",
-            {
-                "start": start,
-                "end": end,
-            }
-        )
-
-    def add_polyline(self, points):
-        self.add_entity(
-            "polyline",
-            {
-                "points": list(points),
-            }
-        )
-
-    def add_circle(self, center: Point, radius: float):
-        self.add_entity(
-            "circle",
-            {
-                "center": center,
-                "radius": radius,
-            }
-        )
-
-    def add_arc(self, center: Point, radius: float, start_angle: float, extent: float):
-        self.add_entity(
-            "arc",
-            {
-                "center": center,
-                "radius": radius,
-                "start_angle": start_angle,
-                "extent": extent,
-            }
-        )
-
-    def add_polygon(self, points):
-        self.add_entity(
-            "polygon",
-            {
-                "points": list(points),
-            }
-        )
-
-    def add_ellipse(self, center: Point, radius_x: float, radius_y: float, rotation: float = 0.0):
-        """ Agrega una elipse al modelo."""
-        self.add_entity(
-            "ellipse",
-            {
-                "center": center,
-                "radius_x": float(radius_x),
-                "radius_y": float(radius_y),
-                "rotation": float(rotation) % 360.0,
-            },
-        )
-
-    def get_entity_by_id(self, entity_id: int):
-        for entity in self.entities:
-            if entity.id == entity_id:
-                return entity
-
-        return None
-
-    def has_selection(self) -> bool:
-        return any(entity.selected for entity in self.entities)
-
-    def selection_count(self) -> int:
-        return sum(1 for entity in self.entities if entity.selected)
-
-    def get_selected_entities(self):
-        return [entity for entity in self.entities if entity.selected]
-
-    def select_all(self):
-        for entity in self.entities:
-            entity.selected = True
-
-        self.redraw()
-
-    def clear_selection(self):
-        for entity in self.entities:
-            entity.selected = False
-
-        self.redraw()
-
-    def select_last(self):
-        if self.entities:
-            self.entities[-1].selected = True
-            self.redraw()
-
-    def select_kind(self, kind: str):
-        for entity in self.entities:
-            if entity.kind == kind:
-                entity.selected = True
-
-        self.redraw()
-
-    def toggle_selection(self, entity_id: int, redraw: bool = True) -> bool:
-        entity = self.get_entity_by_id(entity_id)
-
-        if entity is None:
-            return False
-
-        entity.selected = not entity.selected
-
-        if redraw:
-            self.redraw()
-
-        return True
-
-    def set_selection_ids(self, ids):
-        ids_set = set(ids)
-
-        for entity in self.entities:
-            entity.selected = entity.id in ids_set
-
-        self.redraw()
-
-    def delete_selected(self):
-        selected_count = self.selection_count()
-
-        if selected_count == 0:
-            return 0
-
-        self.entities = [
-            entity
-            for entity in self.entities
-            if not entity.selected
-        ]
-
-        self.redraw()
-
-        return selected_count
-
-    def delete_entities(self, target: str):
-        if target == "TODO":
-            count = len(self.entities)
-            self.entities = []
-            self.redraw()
-            return count
-
-        kind = TARGET_KIND_MAP.get(target)
-
-        if kind is None:
-            return 0
-
-        count = sum(
-            1
-            for entity in self.entities
-            if entity.kind == kind
-        )
-
-        if count > 0:
-            self.entities = [
-                entity
-                for entity in self.entities
-                if entity.kind != kind
-            ]
-
-            self.redraw()
-
-        return count
-
     def copy_selected(self, dx: float, dy: float):
         selected = self.get_selected_entities()
 
@@ -379,7 +182,7 @@ class CadApp:
             new_entity = self.add_entity(
                 entity.kind,
                 new_data,
-                redraw=False,
+                notify=False,
             )
 
             self._move_entity(new_entity, dx, dy)
@@ -413,7 +216,7 @@ class CadApp:
             new_entity = self.add_entity(
                 entity.kind,
                 new_data,
-                redraw=False,
+                notify=False,
             )
 
             self._move_entity(new_entity, dx, dy)
@@ -862,6 +665,9 @@ class CadApp:
 
     def redraw(self):
         self.canvas.redraw()
+
+    def notify_change(self):
+        self.redraw()
 
     def toggle_show_grid(self):
         self.show_grid = not self.show_grid
