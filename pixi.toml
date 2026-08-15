@@ -7,6 +7,7 @@ version = "0.1.0"
 
 [tasks]
 app = "python -m tkcad"
+test = "python -m pytest tests/ -v"
 
 [dependencies]
 python = ">=3.14.6,<3.15"
@@ -15,6 +16,7 @@ tk = ">=8.6.13,<9"
 numpy = ">=2.5.2,<3"
 pillow = ">=12.3.0,<13"
 pyinstaller = ">=6.22.0,<7"
+pytest = ">=9.1.1,<10"
 
 [pypi-dependencies]
 tkcad = { path = ".", editable = true }

@@ -330,6 +330,16 @@ src/tkcad/
 
 ---
 
+### Añadido de ProjectIO en core
+
+#### Lo que hemos ganado
+
+- **Formato de archivo versionado y centralizado** (`VERSION = 1`): el día que cambies el formato, migraciones en un solo sitio.
+- **`ProjectIO` testeable sin Tkinter**: perfecto para estrenar la Opción A mañana.
+- `app.py` pierde ~120 líneas más.
+
+------
+
 
 
 ---------
