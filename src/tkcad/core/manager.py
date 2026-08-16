@@ -110,7 +110,12 @@ class CommandLineManager:
             if command_class:
                 self.ctx.mark_action()
                 self.active = command_class()
-                self.active.start(self.ctx)
+                result = self.active.start(self.ctx)
+                if result == CommandResult.FINISHED:
+                    self.active = None
+                    self.ctx.clear_preview()
+                    self.ctx.commit_action()
+                    self.ctx.prompt("comando:")
             else:
                 self.ctx.write(f"Comando no reconocido: {text}")
                 self.ctx.write("Comandos disponibles: " + ", ".join(self.get_available_command_names()))
