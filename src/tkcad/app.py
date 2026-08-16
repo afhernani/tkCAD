@@ -355,6 +355,7 @@ class CadApp(Document):
             self.entities, p,
             base_point=base_point,
             ignore_entity_id=ignore_entity_id,
+            scale = self.canvas.scale,
         )
 
     @property

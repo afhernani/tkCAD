@@ -52,6 +52,7 @@ class SnapEngine:
         p: Point,
         base_point: Optional[Point] = None,
         ignore_entity_id=None,
+        scale: float = 1.0,
     ) -> Tuple[Point, Optional[str]]:
         """
         Devuelve:
@@ -68,22 +69,22 @@ class SnapEngine:
 
         if "POINT" in self.snap_modes:
             candidates.extend(
-                self._snap_points_near(entities, p, ignore_entity_id)
+                self._snap_points_near(entities, p, ignore_entity_id, scale)
             )
         if "ENDPOINT" in self.snap_modes:
             candidates.extend(
-                self._snap_endpoints_near(entities, p, ignore_entity_id)
+                self._snap_endpoints_near(entities, p, ignore_entity_id, scale)
             )
         if "MIDPOINT" in self.snap_modes:
             candidates.extend(
-                self._snap_midpoints_near(entities, p, ignore_entity_id)
+                self._snap_midpoints_near(entities, p, ignore_entity_id, scale)
             )
         if "INTERSECTION" in self.snap_modes:
             candidates.extend(
-                self._snap_intersections_near(entities, p, ignore_entity_id)
+                self._snap_intersections_near(entities, p, ignore_entity_id, scale)
             )
 
-        best = self._nearest_snap_candidate(candidates, p)
+        best = self._nearest_snap_candidate(candidates, p, scale)
         if best is not None:
             return best
 
@@ -113,8 +114,8 @@ class SnapEngine:
         if distance <= tolerance:
             candidates.append((point, kind))
 
-    def _nearest_snap_candidate(self, candidates, target: Point):
-        tolerance = self.snap_tolerance_pixels
+    def _nearest_snap_candidate(self, candidates, target: Point, scale: float = 1.0):
+        tolerance = self.snap_tolerance_pixels/scale
         best_point = None
         best_kind = None
         best_distance = tolerance
@@ -152,9 +153,9 @@ class SnapEngine:
     # --------------------------------------------------------
     # Snaps a puntos específicos
     # --------------------------------------------------------
-    def _snap_points_near(self, entities, p: Point, ignore_entity_id=None):
+    def _snap_points_near(self, entities, p: Point, ignore_entity_id=None, scale: float = 1.0):
         """Snap a vértices, centros de círculo/arco/elipse."""
-        tolerance = self.snap_tolerance_pixels
+        tolerance = self.snap_tolerance_pixels / scale
         candidates = []
 
         for entity in entities:
@@ -190,9 +191,9 @@ class SnapEngine:
 
         return candidates
 
-    def _snap_endpoints_near(self, entities, p: Point, ignore_entity_id=None):
+    def _snap_endpoints_near(self, entities, p: Point, ignore_entity_id=None, scale: float = 1.0):
         """Snap a extremos de líneas, vértices, extremos de arco, ejes de elipse."""
-        tolerance = self.snap_tolerance_pixels
+        tolerance = self.snap_tolerance_pixels / scale
         candidates = []
 
         for entity in entities:
@@ -220,9 +221,9 @@ class SnapEngine:
 
         return candidates
 
-    def _snap_midpoints_near(self, entities, p: Point, ignore_entity_id=None):
+    def _snap_midpoints_near(self, entities, p: Point, ignore_entity_id=None, scale: float = 1.0):
         """Snap a puntos medios de líneas, segmentos de polilínea/polígono, arcos."""
-        tolerance = self.snap_tolerance_pixels
+        tolerance = self.snap_tolerance_pixels / scale
         candidates = []
 
         for entity in entities:
@@ -260,9 +261,9 @@ class SnapEngine:
 
         return candidates
 
-    def _snap_intersections_near(self, entities, p: Point, ignore_entity_id=None):
+    def _snap_intersections_near(self, entities, p: Point, ignore_entity_id=None, scale: float = 1.0):
         """Snap a intersecciones entre segmentos lineales."""
-        tolerance = self.snap_tolerance_pixels
+        tolerance = self.snap_tolerance_pixels / scale
         candidates = []
 
         segments = self._linear_segments(entities, ignore_entity_id)

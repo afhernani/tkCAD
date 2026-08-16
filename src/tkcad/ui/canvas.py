@@ -14,6 +14,9 @@ class CadCanvas(tk.Canvas):
         # Estado propio del canvas
         self.margin = 20
         self.item_to_entity = {}
+        self.scale = 1.0     # zoom (1.0 = 100%)
+        self.pan_x = 0.0     # desplazamiento en unidades de mundo
+        self.pan_y = 0.0        
 
         # Estado de selección visual
         self.select_press_point = None
@@ -48,24 +51,25 @@ class CadCanvas(tk.Canvas):
         con el eje Y apuntando hacia arriba.
         """
         h = self.winfo_height()
-
-        if h <= 1:
-            h = 400
-
-        # margin = 20
-
-        x = p.x + self.margin
-        y = h - self.margin - p.y
-
+        x = (p.x - self.pan_x) * self.scale + self.margin
+        y = h - ((p.y - self.pan_y) * self.scale + self.margin)
         return x, y
 
     def canvas_to_world(self, x: float, y: float) -> Point:
+        """Convierte píxeles del canvas a coordenadas de mundo."""
         h = self.winfo_height()
+        wx = (x - self.margin) / self.scale + self.pan_x
+        wy = ((h - y) - self.margin) / self.scale + self.pan_y
+        return Point(wx, wy)
 
-        if h <= 1:
-            h = 400
+    def world_to_canvas_length(self, length: float) -> float:
+        """Convierte una longitud de mundo a píxeles en pantalla.
 
-        return Point(x - self.margin, h - self.margin - y)
+        La usamos para radios de vistas previas, tamaños de grips,
+        tolerancias de snap... cualquier cosa que deba medirse
+        en pantalla y no en el mundo.
+        """
+        return length * self.scale
 
     def redraw(self):
         self.delete("all")
@@ -585,7 +589,8 @@ class CadCanvas(tk.Canvas):
 
         center, radius = data
         cx, cy = self.world_to_canvas(center)
-        box = (cx - radius, cy - radius, cx + radius, cy + radius)
+        r_px = self.world_to_canvas_length(radius)   # ← escalado
+        box = (cx - r_px, cy - r_px, cx + r_px, cy + r_px)
 
         if (
             self.preview_circle_item is None

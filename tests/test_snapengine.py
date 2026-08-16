@@ -92,3 +92,15 @@ def test_toggle_y_configuracion_de_modos():
     assert "ENDPOINT" in engine.snap_modes
     engine.clear_snap_modes()
     assert engine.snap_modes == set()
+
+def test_tolerancia_de_snap_se_ajusta_con_el_zoom():
+    engine = SnapEngine()
+    engine.snap_modes = {"ENDPOINT"}
+    engine.snap_tolerance_pixels = 8
+    entities = [make_line(1, Point(0, 0), Point(50, 50))]
+    # A 2.5 unidades del extremo: con zoom x4 (8 px = 2 uds) NO imanta...
+    p, kind = engine.snap_point(entities, Point(52.5, 50), scale=4.0)
+    assert kind is None
+    # ...pero con zoom 1 sí.
+    p, kind = engine.snap_point(entities, Point(52.5, 50))
+    assert kind == "ENDPOINT"
