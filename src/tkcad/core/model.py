@@ -860,3 +860,38 @@ class Document:
         self.notify_change()
 
         return True, "Entidad extendida correctamente."
+
+    # ----------------------------------------
+    # ZOOM y PAN
+    # ----------------------------------------
+
+    def bounding_box(self):
+        """Caja envolvente de las entidades visibles, o None."""
+        visibles = self.visible_entities()
+        if not visibles:
+            return None
+        min_x = min_y = float("inf")
+        max_x = max_y = float("-inf")
+        for entity in visibles:
+            for point in self._bbox_points(entity):
+                min_x = min(min_x, point.x)
+                min_y = min(min_y, point.y)
+                max_x = max(max_x, point.x)
+                max_y = max(max_y, point.y)
+        return min_x, min_y, max_x, max_y
+
+    def _bbox_points(self, entity):
+        data = entity.data
+        if entity.kind == "line":
+            return [data["start"], data["end"]]
+        if entity.kind in ("polyline", "polygon"):
+            return list(data["points"])
+        if entity.kind in ("circle", "arc"):
+            c = data["center"]
+            r = data["radius"]
+            return [Point(c.x - r, c.y - r), Point(c.x + r, c.y + r)]
+        if entity.kind == "ellipse":
+            c = data["center"]
+            m = max(data["radius_x"], data["radius_y"])
+            return [Point(c.x - m, c.y - m), Point(c.x + m, c.y + m)]
+        return []

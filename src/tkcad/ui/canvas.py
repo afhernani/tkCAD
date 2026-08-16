@@ -34,6 +34,12 @@ class CadCanvas(tk.Canvas):
         # seguir el puntero del ratón.
         self.rubber_item = None
         self.preview_circle_item = None
+        self.pan_last = None
+        self.bind_all("<MouseWheel>", self._on_wheel)
+        self.bind("<Button-2>", self._on_pan_press)
+        self.bind("<B2-Motion>", self._on_pan_motion)
+        self.bind("<ButtonRelease-2>", self._on_pan_release)
+        self.bind("<Double-Button-2>", lambda e: self.zoom_extents())
         # Eventos de ratón
         self.bind("<Motion>", self._on_motion)
         # self.bind("<Configure>", lambda e: self.redraw())
@@ -285,16 +291,21 @@ class CadCanvas(tk.Canvas):
         min_y = min(top_left.y, bottom_right.y)
         max_y = max(top_left.y, bottom_right.y)
 
-        g = self.app.grid_size
+        # Paso adaptativo al zoom: al menos 12 píxeles entre líneas
+        step = self.app.grid_size
+        while step * self.scale < 12:
+            step *= 2
+
+        # g = self.app.grid_size
 
         # Protección contra mallas demasiado densas
-        if (max_x - min_x) / g > 1000:
+        if (max_x - min_x) / step > 1000:
             return
 
-        if (max_y - min_y) / g > 1000:
+        if (max_y - min_y) / step > 1000:
             return
 
-        x = math.floor(min_x / g) * g
+        x = math.floor(min_x / step) * step
 
         while x <= max_x:
             cx = x + self.margin
@@ -304,9 +315,9 @@ class CadCanvas(tk.Canvas):
                 fill="#222222",
             )
 
-            x += g
+            x += step
 
-        y = math.floor(min_y / g) * g
+        y = math.floor(min_y / step) * step
 
         while y <= max_y:
             _, cy = self.world_to_canvas(Point(0.0, y))
@@ -316,7 +327,7 @@ class CadCanvas(tk.Canvas):
                 fill="#222222",
             )
 
-            y += g
+            y += step
 
     def _ellipse_points(self, entity, samples: int = 64):
         """Genera una lista de puntos que representan la elipse."""
@@ -604,3 +615,56 @@ class CadCanvas(tk.Canvas):
             )
         else:
             self.coords(self.preview_circle_item, *box)
+
+    # --------------------------------------------------------
+    # Zoom y pan
+    # --------------------------------------------------------
+    def zoom_at(self, cx, cy, factor):
+        world = self.canvas_to_world(cx, cy)
+        new_scale = min(max(self.scale * factor, 0.02), 50.0)
+        if new_scale == self.scale:
+            return
+        self.scale = new_scale
+        h = self.winfo_height()
+        self.pan_x = world.x - (cx - self.margin) / self.scale
+        self.pan_y = world.y - ((h - cy) - self.margin) / self.scale
+        self.redraw()
+
+    def zoom_center(self, factor):
+        self.zoom_at(self.winfo_width() / 2, self.winfo_height() / 2, factor)
+
+    def zoom_extents(self):
+        bbox = self.app.bounding_box()
+        if bbox is None:
+            return
+        min_x, min_y, max_x, max_y = bbox
+        w = max(max_x - min_x, 1e-9)
+        h_world = max(max_y - min_y, 1e-9)
+        avail_w = max(self.winfo_width() - 2 * self.margin, 1)
+        avail_h = max(self.winfo_height() - 2 * self.margin, 1)
+        self.scale = min(avail_w / w, avail_h / h_world)
+        center_x = (min_x + max_x) / 2
+        center_y = (min_y + max_y) / 2
+        self.pan_x = center_x - (self.winfo_width() / 2 - self.margin) / self.scale
+        self.pan_y = center_y - (self.winfo_height() / 2 - self.margin) / self.scale
+        self.redraw()
+
+    def _on_wheel(self, event):
+        factor = 1.1 if event.delta > 0 else 1 / 1.1
+        self.zoom_at(event.x, event.y, factor)
+
+    def _on_pan_press(self, event):
+        self.pan_last = (event.x, event.y)
+
+    def _on_pan_motion(self, event):
+        if self.pan_last is None:
+            return
+        dx = event.x - self.pan_last[0]
+        dy = event.y - self.pan_last[1]
+        self.pan_last = (event.x, event.y)
+        self.pan_x -= dx / self.scale
+        self.pan_y += dy / self.scale
+        self.redraw()
+
+    def _on_pan_release(self, event):
+        self.pan_last = None

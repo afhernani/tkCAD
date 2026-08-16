@@ -301,6 +301,12 @@ class CadApp(Document):
         self.redraw()
         return self.show_grid
 
+    def zoom_center(self, factor):
+        self.canvas.zoom_center(factor)
+
+    def zoom_extents(self):
+        self.canvas.zoom_extents()
+
     # métodos para configurar los snaps
     def get_snap_modes(self):
         return sorted(self.snap_modes)

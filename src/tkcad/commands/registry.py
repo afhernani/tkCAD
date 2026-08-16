@@ -35,6 +35,7 @@ from .file.nuevo import NewCommand
 from .view.seleccion import SelectCommand, ListCommand
 from .view.snap import SnapCommand, GridCommand, ShowGridCommand
 from .view.capa import CapaCommand
+from .view.zoom import ZoomCommand
 
 # System
 from .system.ayuda import HelpCommand
@@ -70,6 +71,7 @@ ALL_COMMANDS: List[Type[Command]] = [
     GridCommand,
     ShowGridCommand,
     CapaCommand,
+    ZoomCommand,
     # System
     HelpCommand,
     ExitCommand,

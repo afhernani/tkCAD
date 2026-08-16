@@ -59,3 +59,10 @@ def test_get_entity_by_id():
     doc.add_line(Point(0, 0), Point(1, 0))
     assert doc.get_entity_by_id(1) is not None
     assert doc.get_entity_by_id(99) is None
+
+def test_bounding_box():
+    doc = Document()
+    assert doc.bounding_box() is None
+    doc.add_line(Point(-10, 0), Point(5, 8))
+    doc.add_circle(Point(0, 0), 2.0)
+    assert doc.bounding_box() == (-10, -2, 5, 8)

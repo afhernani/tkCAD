@@ -111,6 +111,7 @@ Teclas especiales:
 | `MALLA`       | `GRID`                  | Activa/desactiva malla y snap a malla.                                         |
 | `VERMALLA`    | `VERGRID`               | Muestra/oculta la malla en pantalla.                                           |
 | `CAPA`        | `CAPAS`, `LA`           | Gestor de capas: crear, cambiar, ON/OFF, color, bloqueo                        |
+| `ZOOM`        | `ZOOM`, `Z`             | Gestor de zoom: + , -, Todo, T/EXT, 2 (o 0.5, etc..)
 
 ---
 
