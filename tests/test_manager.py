@@ -110,3 +110,18 @@ def test_terminar_comando_limpia_preview():
     assert manager.active is None
     # ...y le pidió al contexto que limpiara el preview
     assert ctx.preview_cleared == 1
+
+class InstantCommand(Command):
+    name = "INSTANT"
+
+    def start(self, ctx):
+        ctx.write("hecho")
+        return CommandResult.FINISHED
+
+
+def test_comando_instantaneo_termina_al_arrancar():
+    ctx = FakeCtx()
+    manager = CommandLineManager(ctx)
+    manager.register(InstantCommand)
+    manager.process_input("INSTANT")
+    assert manager.active is None
