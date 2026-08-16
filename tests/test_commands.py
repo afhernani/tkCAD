@@ -31,6 +31,9 @@ class FakeCtx:
     def add_polyline(self, points):
         self.polylines.append(list(points))
 
+    def snap_point(self, p, base_point=None, ignore_entity_id=None):
+        return p, None
+
 
 def make_manager():
     ctx = FakeCtx()
@@ -139,3 +142,13 @@ def test_polilinea_con_un_punto_cancela():
     manager.process_input("")
     assert len(ctx.polylines) == 0
     assert manager.active is None
+
+def test_circulo_preview_devuelve_centro_y_radio():
+    from tkcad.commands.drawing.circulo import CircleCommand
+
+    ctx = FakeCtx()
+    cmd = CircleCommand()
+    cmd.start(ctx)
+    cmd.handle_input(ctx, "0,0")          # centro
+    data = cmd.preview_circle(ctx, Point(3, 4))
+    assert data == (Point(0, 0), 5.0)     # radio 3-4-5

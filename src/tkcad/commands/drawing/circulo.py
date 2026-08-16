@@ -226,3 +226,14 @@ class CircleCommand(Command):
             return self.center
 
         return None
+
+    def preview_circle(self, ctx, cursor: Point):
+        """Vista previa: (centro, radio) bajo el cursor, o None."""
+        if self.center is None:
+            return None
+        p, _ = ctx.snap_point(cursor, base_point=self.center)
+        radius = math.hypot(p.x - self.center.x, p.y - self.center.y)
+        if radius <= 1e-9:
+            return None
+        return self.center, radius
+        
