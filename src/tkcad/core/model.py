@@ -21,10 +21,16 @@ class Document:
         self.next_entity_id = 1
         self.layers = {"0": Layer(name="0")}
         self.current_layer = "0"
+        # undo / redo
+        self._undo_stack = []
+        self._redo_stack = []
+        self.history_limit = 100
+        self._pending_snapshot = None
+        self._mutated = False
 
     def notify_change(self):
         """Hook de cambio: CadApp lo sobreescribe con redraw."""
-        pass
+        self._mutated = True
 
     def log(self, message: str):
         """Hook de mensajes: CadApp lo sobreescribe con write."""
@@ -126,12 +132,14 @@ class Document:
         if not name or name in self.layers:
             return False
         self.layers[name] = Layer(name=name, color=color)
+        self.notify_change()
         return True
 
     def set_current_layer(self, name: str) -> bool:
         if name not in self.layers:
             return False
         self.current_layer = name
+        self.notify_change()
         return True
 
     def set_layer_color(self, name: str, color: str) -> bool:
@@ -176,6 +184,7 @@ class Document:
         if any(entity.layer == name for entity in self.entities):
             return False
         del self.layers[name]
+        self.notify_change()
         return True
 
 
@@ -895,3 +904,62 @@ class Document:
             m = max(data["radius_x"], data["radius_y"])
             return [Point(c.x - m, c.y - m), Point(c.x + m, c.y + m)]
         return []
+
+    # --------------------------------------------------------
+    # Historial (deshacer / rehacer)
+    # --------------------------------------------------------
+    def _snapshot(self):
+        return {
+            "entities": copy.deepcopy(self.entities),
+            "next_entity_id": self.next_entity_id,
+            "layers": copy.deepcopy(self.layers),
+            "current_layer": self.current_layer,
+        }
+
+    def _restore(self, state):
+        self.entities = state["entities"]
+        self.next_entity_id = state["next_entity_id"]
+        self.layers = state["layers"]
+        self.current_layer = state["current_layer"]
+        self.notify_change()
+
+    def mark_action(self):
+        """Inicio de una acción potencialmente mutante."""
+        self._pending_snapshot = self._snapshot()
+        self._mutated = False
+
+    def commit_action(self):
+        """Fin de la acción: solo guarda el paso si hubo mutaciones."""
+        if self._pending_snapshot is not None and self._mutated:
+            self._undo_stack.append(self._pending_snapshot)
+            if len(self._undo_stack) > self.history_limit:
+                self._undo_stack.pop(0)
+            self._redo_stack.clear()
+        self._pending_snapshot = None
+        self._mutated = False
+
+    def clear_history(self):
+        self._undo_stack.clear()
+        self._redo_stack.clear()
+        self._pending_snapshot = None
+        self._mutated = False
+
+    def undo(self) -> bool:
+        self.commit_action()
+        if not self._undo_stack:
+            return False
+        self._redo_stack.append(self._snapshot())
+        self._restore(self._undo_stack.pop())
+        self._pending_snapshot = None
+        self._mutated = False
+        return True
+
+    def redo(self) -> bool:
+        self.commit_action()
+        if not self._redo_stack:
+            return False
+        self._undo_stack.append(self._snapshot())
+        self._restore(self._redo_stack.pop())
+        self._pending_snapshot = None
+        self._mutated = False
+        return True

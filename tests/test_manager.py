@@ -20,6 +20,12 @@ class FakeCtx:
     def clear_preview(self):
         self.preview_cleared += 1
 
+    def mark_action(self):
+        pass
+
+    def commit_action(self):
+        pass
+
 
 class DummyCommand(Command):
     name = "DUMMY"

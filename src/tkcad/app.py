@@ -2,7 +2,7 @@
 import tkinter as tk
 from .core import (ALL_SNAP_MODES, TARGET_KIND_MAP, Command, CommandResult, 
                    Entity, Point, parse_number, parse_point, CommandLineManager,
-                   SnapEngine, ProjectIO, Document,
+                   SnapEngine, ProjectIO, Document, Layer
 )
 from .commands.registry import register_all
 from .ui.console import ConsoleWidget
@@ -264,6 +264,7 @@ class CadApp(Document):
             self.layers = layers                     # ← NUEVO
             self.current_layer = current_layer
             self.current_file = path
+            self.clear_history()
             self.redraw()
             self.root.title(f"Editor - {path.name}")
             return True, f"Proyecto abierto: {path}"
@@ -275,6 +276,9 @@ class CadApp(Document):
         self.next_entity_id = 1
         self.current_file = None
         self.canvas.item_to_entity = {}
+        self.layers = {"0": Layer(name="0")}
+        self.current_layer = "0"
+        self.clear_history()
 
         if hasattr(self, "preview_line"):
             self.preview_line = None
@@ -294,6 +298,7 @@ class CadApp(Document):
         self.canvas.redraw()
 
     def notify_change(self):
+        super().notify_change() # marca mutacion
         self.redraw()
 
     def toggle_show_grid(self):

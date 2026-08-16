@@ -13,6 +13,12 @@ class FakeCtx:
         self.previews = []
         self.preview_cleared = 0
 
+    def mark_action(self):      # ← NUEVO
+        pass
+
+    def commit_action(self):    # ← NUEVO
+        pass
+
     def write(self, text):
         self.messages.append(text)
 

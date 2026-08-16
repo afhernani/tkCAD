@@ -86,6 +86,7 @@ class CommandLineManager:
                 if result == CommandResult.FINISHED:
                     self.active = None
                     self.ctx.clear_preview()
+                    self.ctx.commit_action()
                     self.ctx.prompt("Comando:")
             return
 
@@ -97,6 +98,7 @@ class CommandLineManager:
             if self.active is not None:
                 self.ctx.write("Comando cancelado.")
                 self.ctx.clear_preview()
+                self.ctx.commit_action()
                 self.active = None
                 self.ctx.prompt("Comando:")
             return
@@ -106,6 +108,7 @@ class CommandLineManager:
             command_class = self.factories.get(text.upper())
 
             if command_class:
+                self.ctx.mark_action()
                 self.active = command_class()
                 self.active.start(self.ctx)
             else:
@@ -121,6 +124,7 @@ class CommandLineManager:
         if result == CommandResult.FINISHED:
             self.active = None
             self.ctx.clear_preview()
+            self.ctx.commit_action()
             self.ctx.prompt("Comando:")
 
     def is_waiting_for_point(self) -> bool:

@@ -423,6 +423,7 @@ class CadCanvas(tk.Canvas):
         grip = self.grip_manager.get_grip_at(event.x, event.y)
 
         if grip is not None:
+            self.app.mark_action()
             self.grip_manager.grip_dragging = True
             self.grip_manager.active_grip = grip
 
@@ -466,6 +467,7 @@ class CadCanvas(tk.Canvas):
         if self.grip_manager.grip_dragging:
             self.grip_manager.grip_dragging = False
             self.grip_manager.active_grip = None
+            self.app.commit_action()
 
             self.app.redraw()
 

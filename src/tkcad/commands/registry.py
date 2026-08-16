@@ -40,6 +40,7 @@ from .view.zoom import ZoomCommand
 # System
 from .system.ayuda import HelpCommand
 from .system.exitx import ExitCommand
+from .system.deshacer import UndoCommand, RedoCommand
 
 
 ALL_COMMANDS: List[Type[Command]] = [
@@ -75,6 +76,8 @@ ALL_COMMANDS: List[Type[Command]] = [
     # System
     HelpCommand,
     ExitCommand,
+    UndoCommand, 
+    RedoCommand,
 ]
 
 

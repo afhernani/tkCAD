@@ -43,6 +43,9 @@ class ConsoleWidget(tk.Frame):
         self.completion_callback = None
         self.entry.bind("<Tab>", self._on_tab)
 
+        self.entry.bind("<Control-z>", lambda e: self.app.undo())
+        self.entry.bind("<Control-y>", lambda e: self.app.redo())
+
         self.entry.focus_set()
 
     def write(self, text: str):
