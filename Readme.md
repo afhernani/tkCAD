@@ -110,6 +110,7 @@ Teclas especiales:
 | `SNAP`        | `SN`, `SNA`             | Activa/desactiva modos de snap y cambia el tamaño de malla (número).           |
 | `MALLA`       | `GRID`                  | Activa/desactiva malla y snap a malla.                                         |
 | `VERMALLA`    | `VERGRID`               | Muestra/oculta la malla en pantalla.                                           |
+| `CAPA`        | `CAPAS`, `LA`           | Gestor de capas: crear, cambiar, ON/OFF, color, bloqueo                        |
 
 ---
 
