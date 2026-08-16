@@ -356,7 +356,7 @@ class CadApp(Document):
 
     def snap_point(self, p: Point, base_point: Point = None, ignore_entity_id=None):
         return self.snaps.snap_point(
-            self.entities, p,
+            self.visible_entities(), p,
             base_point=base_point,
             ignore_entity_id=ignore_entity_id,
             scale = self.canvas.scale,

@@ -88,11 +88,14 @@ class CadCanvas(tk.Canvas):
             "ellipse": "#ff99ff",
         }
 
-        for entity in self.app.entities:
+        for entity in self.app.visible_entities():          # ← solo visibles
+            layer = self.app.get_layer(entity.layer)
             if entity.selected:
                 color = "yellow"
+            elif layer is not None and layer.color is not None:
+                color = layer.color                          # ← color de la capa
             else:
-                color = normal_colors.get(entity.kind, "white")
+                color = normal_colors.get(entity.kind, "white")  # ← color por tipo
 
             tag = f"entity_{entity.id}"
 
