@@ -46,6 +46,8 @@ class ConsoleWidget(tk.Frame):
         self.entry.bind("<Control-z>", lambda e: self.app.undo())
         self.entry.bind("<Control-y>", lambda e: self.app.redo())
 
+        self.entry.bind("<F8>", lambda e: self.app.toggle_ortho())
+
         self.entry.focus_set()
 
     def write(self, text: str):

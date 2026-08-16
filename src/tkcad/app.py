@@ -306,6 +306,11 @@ class CadApp(Document):
         self.redraw()
         return self.show_grid
 
+    def toggle_ortho(self) -> bool:
+        activo = self.snaps.toggle_snap_mode("ORTHO")
+        self.write(f"ORTHO {'activado' if activo else 'desactivado'}.")
+        return activo
+
     def zoom_center(self, factor):
         self.canvas.zoom_center(factor)
 

@@ -112,7 +112,8 @@ Teclas especiales:
 | `VERMALLA`    | `VERGRID`               | Muestra/oculta la malla en pantalla.                                           |
 | `CAPA`        | `CAPAS`, `LA`           | Gestor de capas: crear, cambiar, ON/OFF, color, bloqueo                        |
 | `ZOOM`        | `ZOOM`, `Z`             | Gestor de zoom: + , -, Todo, T/EXT, 2 (o 0.5, etc..)
-
+                                                    |
+| `ORTHO`       | `ORT`, `F8`             | Activa/desactiva el forzado ortogonal |
 ---
 
 ## 📐 Entrada de coordenadas
