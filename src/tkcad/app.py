@@ -228,7 +228,9 @@ class CadApp(Document):
 
             # Guardar de verdad (ProjectIO)
             path = self.project_io.save(
-                path, self.entities, self.next_entity_id
+                path, self.entities, self.next_entity_id,
+                layers=self.layers,
+                current_layer=self.current_layer,
             )
             self.current_file = path
             self.root.title(f"Editor - {path.name}")
@@ -256,9 +258,11 @@ class CadApp(Document):
             else:
                 path = Path(filepath).expanduser()
 
-            entities, next_id, path = self.project_io.load(path)
+            entities, next_id, layers, current_layer, path = self.project_io.load(path)
             self.entities = entities
             self.next_entity_id = next_id
+            self.layers = layers                     # ← NUEVO
+            self.current_layer = current_layer
             self.current_file = path
             self.redraw()
             self.root.title(f"Editor - {path.name}")

@@ -3,6 +3,7 @@ from pathlib import Path
 
 from .entity import Entity
 from .point import Point
+from .layer import Layer
 
 
 class ProjectIO:
@@ -12,7 +13,7 @@ class ProjectIO:
     y lee/escribe archivos. Los diálogos los gestiona CadApp.
     """
 
-    VERSION = 1
+    VERSION = 2
 
     # --------------------------------------------------------
     # Encode / decode de valores
@@ -47,6 +48,7 @@ class ProjectIO:
         return {
             "id": entity.id,
             "kind": entity.kind,
+            "layer":entity.layer,
             "data": {
                 key: self.encode_value(value)
                 for key, value in entity.data.items()
@@ -66,58 +68,90 @@ class ProjectIO:
             kind=kind,
             data=decoded_data,
             selected=False,
+            layer=str(data.get("layer","0")),
         )
 
     # --------------------------------------------------------
     # Proyecto completo <-> JSON
     # --------------------------------------------------------
-    def to_json(self, entities, next_entity_id: int) -> str:
+
+    def layer_to_dict(self, layer) -> dict:
+        return {
+            "name": layer.name,
+            "color": layer.color,
+            "visible": layer.visible,
+            "locked": layer.locked,
+        }
+
+    def layer_from_dict(self, data) -> Layer:
+        return Layer(
+            name=str(data["name"]),
+            color=str(data.get("color", "white")),
+            visible=bool(data.get("visible", True)),
+            locked=bool(data.get("locked", False)),
+        )
+
+    def to_json(self, entities, next_entity_id, layers=None, current_layer="0") -> str:
+        if layers is None:
+            layers = {"0": Layer(name="0")}
         project_data = {
             "version": self.VERSION,
             "next_entity_id": next_entity_id,
+            "current_layer": current_layer,
+            "layers": [
+                self.layer_to_dict(layer)
+                for layer in layers.values()
+            ],
             "entities": [
                 self.entity_to_dict(entity)
                 for entity in entities
             ],
         }
-        return json.dumps(
-            project_data,
-            indent=2,
-            ensure_ascii=False,
-        )
+        return json.dumps(project_data, indent=2, ensure_ascii=False)
 
     def from_json(self, text: str):
-        """Devuelve (entities, next_entity_id)."""
+        """Devuelve (entities, next_entity_id, layers, current_layer)."""
         project_data = json.loads(text)
         entities = [
             self.entity_from_dict(entity_data)
             for entity_data in project_data.get("entities", [])
         ]
-        max_id = max(
-            (entity.id for entity in entities),
-            default=0,
-        )
+        max_id = max((entity.id for entity in entities), default=0)
         next_id = project_data.get("next_entity_id")
         if not isinstance(next_id, int) or next_id <= max_id:
             next_id = max_id + 1
-        return entities, next_id
 
+        # Capas: los archivos v1 no tienen → migración a la capa "0".
+        layers_data = project_data.get("layers")
+        if layers_data:
+            layers = {
+                layer.name: layer
+                for layer in map(self.layer_from_dict, layers_data)
+            }
+        else:
+            layers = {}
+        if "0" not in layers:
+            layers["0"] = Layer(name="0")
+        current_layer = str(project_data.get("current_layer", "0"))
+        if current_layer not in layers:
+            current_layer = "0"
+        return entities, next_id, layers, current_layer
     # --------------------------------------------------------
     # Acceso a disco (sin diálogos)
     # --------------------------------------------------------
-    def save(self, path, entities, next_entity_id: int) -> Path:
+    def save(self, path, entities, next_entity_id, layers=None, current_layer="0") -> Path:
         path = Path(path).expanduser()
         if path.suffix == "":
             path = path.with_suffix(".json")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
-            self.to_json(entities, next_entity_id),
+            self.to_json(entities, next_entity_id, layers, current_layer),
             encoding="utf-8",
         )
         return path
 
     def load(self, path):
-        """Devuelve (entities, next_entity_id, path_resuelto)."""
+        """Devuelve (entities, next_entity_id, layers, current_layer, path)."""
         path = Path(path).expanduser()
         if not path.exists() and path.suffix == "":
             alternative = path.with_suffix(".json")
@@ -125,7 +159,7 @@ class ProjectIO:
                 path = alternative
         if not path.exists():
             raise FileNotFoundError(f"No existe el archivo: {path}")
-        entities, next_id = self.from_json(
+        entities, next_id, layers, current_layer = self.from_json(
             path.read_text(encoding="utf-8")
         )
-        return entities, next_id, path
+        return entities, next_id, layers, current_layer, path
