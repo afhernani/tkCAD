@@ -8,6 +8,7 @@ from .manager import CommandLineManager
 from .snapengine import SnapEngine
 from .project import ProjectIO
 from .model import Document
+from .layer import Layer
 
 # (Opcional) definir qué se exporta con "from tkcad.core import *"
 __all__ = [
@@ -17,4 +18,5 @@ __all__ = [
     "CommandResult", "Command",
     "parse_number", "parse_point",
     "CommandLineManager", "SnapEngine", "ProjectIO", "Document",
+    "Layer"
 ]

@@ -7,3 +7,4 @@ class Entity:
     kind: str
     data: Dict[str, Any]
     selected: bool = False
+    layer: str = "0"

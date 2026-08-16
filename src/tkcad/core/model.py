@@ -10,6 +10,7 @@ from typing import List
 from .entity import Entity
 from .point import Point
 from .types import EPS, TARGET_KIND_MAP
+from .layer import Layer
 
 
 class Document:
@@ -18,6 +19,8 @@ class Document:
     def __init__(self):
         self.entities: List[Entity] = []
         self.next_entity_id = 1
+        self.layers = {"0": Layer(name="0")}
+        self.current_layer = "0"
 
     def notify_change(self):
         """Hook de cambio: CadApp lo sobreescribe con redraw."""
@@ -36,6 +39,7 @@ class Document:
             kind=kind,
             data=data,
             selected=False,
+            layer=self.current_layer
         )
         self.next_entity_id += 1
         self.entities.append(entity)
@@ -90,6 +94,92 @@ class Document:
         )
 
     # --------------------------------------------------------
+    # Capas
+    # --------------------------------------------------------
+    def _layer_of(self, entity) -> Layer:
+        layer = self.layers.get(entity.layer)
+        if layer is None:
+            layer = self.layers["0"]
+        return layer
+
+    def visible_entities(self):
+        return [
+            entity for entity in self.entities
+            if self._layer_of(entity).visible
+        ]
+
+    def selectable_entities(self):
+        return [
+            entity for entity in self.entities
+            if self._layer_of(entity).visible
+            and not self._layer_of(entity).locked
+        ]
+
+    def get_layer(self, name: str):
+        return self.layers.get(name)
+
+    def get_layer_names(self):
+        return sorted(self.layers.keys())
+
+    def add_layer(self, name: str, color: str = "white") -> bool:
+        name = name.strip()
+        if not name or name in self.layers:
+            return False
+        self.layers[name] = Layer(name=name, color=color)
+        return True
+
+    def set_current_layer(self, name: str) -> bool:
+        if name not in self.layers:
+            return False
+        self.current_layer = name
+        return True
+
+    def set_layer_color(self, name: str, color: str) -> bool:
+        layer = self.layers.get(name)
+        if layer is None:
+            return False
+        layer.color = color
+        self.notify_change()
+        return True
+
+    def toggle_layer_visible(self, name: str):
+        layer = self.layers.get(name)
+        if layer is None:
+            return None
+        layer.visible = not layer.visible
+        if not layer.visible:
+            for entity in self.entities:
+                if entity.layer == name and entity.selected:
+                    entity.selected = False
+        self.notify_change()
+        return layer.visible
+
+    def toggle_layer_locked(self, name: str):
+        layer = self.layers.get(name)
+        if layer is None:
+            return None
+        layer.locked = not layer.locked
+        if layer.locked:
+            for entity in self.entities:
+                if entity.layer == name and entity.selected:
+                    entity.selected = False
+        self.notify_change()
+        return layer.locked
+
+    def delete_layer(self, name: str) -> bool:
+        # La capa 0 y la capa actual no se pueden borrar.
+        if name == "0" or name == self.current_layer:
+            return False
+        if name not in self.layers:
+            return False
+        # No se borran capas con entidades (diseño simple y seguro).
+        if any(entity.layer == name for entity in self.entities):
+            return False
+        del self.layers[name]
+        return True
+
+
+    # --------------------------------------------------------
     # Consultas
     # --------------------------------------------------------
     def get_entity_by_id(self, entity_id: int):
@@ -111,7 +201,7 @@ class Document:
     # Selección
     # --------------------------------------------------------
     def select_all(self):
-        for entity in self.entities:
+        for entity in self.selectable_entities():
             entity.selected = True
         self.notify_change()
 
@@ -121,12 +211,13 @@ class Document:
         self.notify_change()
 
     def select_last(self):
-        if self.entities:
-            self.entities[-1].selected = True
+        selectable = self.selectable_entities()
+        if selectable:
+            selectable[-1].selected = True
             self.notify_change()
 
     def select_kind(self, kind: str):
-        for entity in self.entities:
+        for entity in self.selectable_entities():
             if entity.kind == kind:
                 entity.selected = True
         self.notify_change()
@@ -134,6 +225,9 @@ class Document:
     def toggle_selection(self, entity_id: int, notify: bool = True) -> bool:
         entity = self.get_entity_by_id(entity_id)
         if entity is None:
+            return False
+        layer = self._layer_of(entity)
+        if not layer.visible or layer.locked:
             return False
         entity.selected = not entity.selected
         if notify:
@@ -143,12 +237,17 @@ class Document:
     def set_selection_ids(self, ids):
         ids_set = set(ids)
         for entity in self.entities:
-            entity.selected = entity.id in ids_set
+            layer = self._layer_of(entity)
+            entity.selected = (
+                entity.id in ids_set
+                and layer.visible
+                and not layer.locked
+            )
         self.notify_change()
 
     def add_selection_ids(self, ids):
         ids_set = set(ids)
-        for entity in self.entities:
+        for entity in self.selectable_entities():
             if entity.id in ids_set:
                 entity.selected = True
         self.notify_change()
@@ -175,17 +274,21 @@ class Document:
 
     def delete_entities(self, target: str):
         if target == "TODO":
-            count = len(self.entities)
-            self.entities = []
-            self.notify_change()
-            return count
-        kind = TARGET_KIND_MAP.get(target)
-        if kind is None:
-            return 0
-        count = sum(1 for entity in self.entities if entity.kind == kind)
-        if count > 0:
+            candidates = self.selectable_entities()
+        else:
+            kind = TARGET_KIND_MAP.get(target)
+            if kind is None:
+                return 0
+            candidates = [
+                entity for entity in self.selectable_entities()
+                if entity.kind == kind
+            ]
+        count = len(candidates)
+        if count:
+            ids = {entity.id for entity in candidates}
             self.entities = [
-                entity for entity in self.entities if entity.kind != kind
+                entity for entity in self.entities
+                if entity.id not in ids
             ]
             self.notify_change()
         return count
