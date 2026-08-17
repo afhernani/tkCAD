@@ -186,16 +186,34 @@ Dentro de `SNAP`, escribir un **número** cambia el tamaño de la malla.
 Los proyectos se guardan en JSON con este formato:
 
 ```json
-{
-  "version": 1,
-  "next_entity_id": 7,
+
+  "version": 2,
+  "next_entity_id": 1,
+  "current_layer": "0",
+  "layers": [
+    {
+      "name": "0",
+      "color": "white",
+      "visible": true,
+      "locked": false
+    }
+  ],
   "entities": [
     {
       "id": 1,
       "kind": "line",
+      "layer": "0",
       "data": {
-        "start": { "__type__": "Point", "x": 0.0, "y": 0.0 },
-        "end":   { "__type__": "Point", "x": 100.0, "y": 0.0 }
+        "start": {
+          "__type__": "Point",
+          "x": 50.0,
+          "y": 50.0
+        },
+        "end": {
+          "__type__": "Point",
+          "x": 120.71067811865476,
+          "y": 120.71067811865476
+        }
       }
     }
   ]
@@ -232,49 +250,107 @@ Esto permite que **todos** los comandos (mover, copiar, rotar, escalar, simetrí
 
 ```bash
 tkCAD/
-├── pixi.toml           # Configuración del entorno y tareas
-├── pyproject.toml      # Paquete Python (editable install)
-├── README.md
+├── pixi.toml                    # Configuración del entorno y tareas
+├── pixi.lock                    # Lock de dependencias de Pixi
+├── pyproject.toml               # Paquete Python (editable install)
+├── README.md                    # Documentación del proyecto
+├── .gitattributes               # Atributos Git
+├── .gitignore                   # Ignorar archivos
+│
+├── docs/                        # Documentación adicional
+│   └── screenshot.png           # Captura de pantalla de la app
 │
 ├── src/
 │   └── tkcad/
-│       ├── __main__.py         # Entry point: python -m tkcad
-│       ├── app.py              # CadApp: orquestador y modelo
+│       ├── __main__.py          # Entry point: python -m tkcad
+│       ├── app.py               # CadApp: orquestador principal
 │       │
-│       ├── core/               # Núcleo (sin UI)
-│       │   ├── command.py      # Command, CommandResult
-│       │   ├── entity.py       # Entity
-│       │   ├── manager.py      # CommandLineManager
-│       │   ├── parser.py       # parse_point, parse_number
-│       │   ├── point.py        # Point
-│       │   ├── project.py      # ProjectIO (JSON)
-│       │   ├── snapengine.py   # SnapEngine
-│       │   └── types.py        # Alias de comandos, constantes
+│       ├── core/                # Núcleo del CAD (lógica sin UI)
+│       │   ├── __init__.py
+│       │   ├── command.py       # Command, CommandResult
+│       │   ├── entity.py        # Entity base
+│       │   ├── layer.py         # Modelo de capas (Layer)
+│       │   ├── manager.py       # CommandLineManager
+│       │   ├── model.py         # Document/Model (incluye snapshots Undo/Redo)
+│       │   ├── parser.py        # parse_point, parse_number
+│       │   ├── point.py         # Point
+│       │   ├── project.py       # ProjectIO (JSON v2 con capas)
+│       │   ├── snapengine.py    # SnapEngine (adaptado a zoom/pan)
+│       │   └── types.py         # Alias de comandos, constantes
 │       │
-│       ├── geometry/           # Utilidades geométricas
-│       │   ├── intersection.py # line_line_intersection
-│       │   ├── projection.py   # projection_param
-│       │   └── utils.py        # EPS
+│       ├── geometry/            # Utilidades geométricas
+│       │   ├── __init__.py
+│       │   ├── geometria        # Funciones geométricas auxiliares
+│       │   ├── intersection.py  # Intersecciones línea-línea
+│       │   ├── projection.py    # projection_param
+│       │   └── utils.py         # EPS, utilidades varias
 │       │
-│       ├── commands/           # Un archivo por comando
-│       │   ├── registry.py     # Registro central de comandos
-│       │   ├── drawing/        # LINEA, POLILINEA, CIRCULO, ...
-│       │   ├── modify/         # MOVER, COPIAR, ROTAR, ...
-│       │   ├── file/           # GUARDAR, ABRIR, NUEVO
-│       │   ├── view/           # SELECCIONAR, SNAP, MALLA
-│       │   └── system/         # AYUDA, EXIT
+│       ├── commands/            # Un archivo por comando
+│       │   ├── __init__.py
+│       │   ├── registry.py      # Registro central de comandos
+│       │   │
+│       │   ├── drawing/         # Comandos de dibujo
+│       │   │   ├── __init__.py
+│       │   │   ├── arco.py
+│       │   │   ├── circulo.py
+│       │   │   ├── elipse.py
+│       │   │   ├── line.py
+│       │   │   ├── poligono.py
+│       │   │   └── poliline.py
+│       │   │
+│       │   ├── file/            # Comandos de archivo
+│       │   │   ├── __init__.py
+│       │   │   ├── abrir.py
+│       │   │   ├── guardar.py
+│       │   │   └── nuevo.py
+│       │   │
+│       │   ├── modify/          # Comandos de edición
+│       │   │   ├── __init__.py
+│       │   │   ├── borrar.py
+│       │   │   ├── copiar.py
+│       │   │   ├── escalar.py
+│       │   │   ├── extender.py
+│       │   │   ├── mover.py
+│       │   │   ├── recortar.py
+│       │   │   ├── rotar.py
+│       │   │   └── simetria.py
+│       │   │
+│       │   ├── system/          # Comandos del sistema
+│       │   │   ├── __init__.py
+│       │   │   ├── ayuda.py
+│       │   │   ├── deshacer.py  # Deshacer/Rehacer (snapshots)
+│       │   │   └── exitx.py
+│       │   │
+│       │   └── view/            # Comandos de vista y configuración
+│       │       ├── __init__.py
+│       │       ├── capa.py      # Gestor de capas
+│       │       ├── ortho.py     # Forzado ortogonal (F8)
+│       │       ├── seleccion.py
+│       │       ├── snap.py
+│       │       └── zoom.py      # Zoom, Pan, malla adaptativa
 │       │
-│       └── ui/                 # Widgets Tkinter
-│           ├── canvas.py       # CadCanvas
-│           ├── console.py      # ConsoleWidget
-│           └── grips.py        # GripManager
+│       └── ui/                  # Widgets Tkinter
+│           ├── __init__.py
+│           ├── canvas.py        # CadCanvas (render, zoom, pan, eventos)
+│           ├── console.py       # ConsoleWidget (línea de comandos)
+│           └── grips.py         # GripManager
 │
-└── tests/                      # Suite de pytest
+└── tests/                       # Suite de pytest
+    ├── __init__.py
+    ├── test_capa.py
+    ├── test_commands.py
     ├── test_geometry.py
+    ├── test_history.py          # Tests de Deshacer/Rehacer
+    ├── test_layers.py           # Tests del modelo de capas
     ├── test_manager.py
+    ├── test_model.py            # Tests del modelo (zoom/pan)
+    ├── test_model_editing.py    # Tests de recortar/extender
+    ├── test_model_transforms.py # Tests de mover, copiar, escalar, simetría
+    ├── test_ortho.py            # Tests del forzado ortogonal
     ├── test_parser.py
-    ├── test_projectio.py
-    └── test_snapengine.py
+    ├── test_project_layers.py   # Tests de ProjectIO con capas
+    ├── test_projection.py
+    └── test_snapengine.py       # Tests del motor de snaps
 ```
 
 El núcleo (`core/`, `geometry/`, `commands/`) es **independiente de Tkinter** y completamente testeable con `pixi run test`.
@@ -344,52 +420,356 @@ ALL_COMMANDS = [
 ## 🧪 Testing
 
 La suite de tests protege los módulos del núcleo:
-
 ```bash
-
+pixi run test
 ```
-
-Cubiertos actualmente:
-
-- Parser de puntos (cartesianos, relativos, polares)
-- Geometría (intersecciones, proyecciones)
-- Motor de snaps (GRID, ENDPOINT, MIDPOINT, INTERSECTION, ORTHO)
-- Gestor de comandos (registro, alias, autocompletado)
-- ProjectIO (round-trip JSON, save/load)
-
-## 📜 Licencia
-
-    MIT
-
-3. Ejecuta:
-
-```bash
-pixi run test    # por si acaso nada se rompió
-git add .
-git commit -m "docs: README completo con arquitectura y guía para añadir comandos"
-```
-
 ----
 
-## ⚠️ Limitaciones conocidas
+**Core del Sistema**
 
-- `RECORTAR` y `EXTENDER` solo funcionan entre `LINEA` y límite `LINEA`.
-- El snap `INTERSECCION` solo calcula intersecciones entre segmentos lineales.
-- No hay zoom ni pan todavía.
-- No hay deshacer/rehacer.
-- No hay marcadores visuales de snap.
-- `ESCALAR` es uniforme y con factor positivo.
-- Las elipses no participan en recortes ni intersecciones.
+#### `test_parser.py`
+
+**Módulo:** `tkcad.core.parser`
+
+-  Parseo de números con coma y punto decimal
+-  Coordenadas cartesianas absolutas (`10,20` y `10;20`)
+-  Coordenadas relativas (`@5,-5`)
+-  Coordenadas polares absolutas y relativas (`10<90`, `@10<45`)
+-  Validación de entradas malformadas
+
+#### `test_manager.py`
+
+**Módulo:** `tkcad.core.manager` (CommandLineManager)
+
+-  Registro de comandos con nombres y alias
+-  Ciclo de vida completo de comandos (start → input → finish)
+-  Autocompletado por prefijo
+-  Cancelación con ESC
+-  Envío de puntos al comando activo
+-  Limpieza de preview al terminar
+-  Comandos instantáneos (terminan en `start()`)
+
+#### `test_history.py`
+
+**Módulo:** `tkcad.core.model` (Document - sistema de snapshots)
+
+-  `undo()` revierte acciones
+-  `redo()` reaplica acciones deshechas
+-  Acciones sin mutaciones no generan historial
+-  Nueva acción limpia el stack de redo
+-  Undo/redo restaura estado de capas
+-  Pila de undos sucesivos
 
 ---
 
-## 🔮 Próximas mejoras previstas
+### **Modelo de Datos y Capas**
 
-- Recortar/extender con más tipos de entidades.
-- Intersecciones con círculos, arcos y elipses.
-- Exportación/importación DXF.
-- Control de cambios sin guardar (`modified`) y confirmación al salir.
-- Autoguardado.
+#### `test_layers.py`
+
+**Módulo:** `tkcad.core.layer` + `tkcad.core.model`
+
+-  Capa "0" existe por defecto
+-  Nuevas entidades van a la capa actual
+-  Validación de capas duplicadas o vacías
+-  Protección contra borrar capa "0" o capa actual
+-  Filtrado de entidades visibles por capa
+-  Capas bloqueadas no se pueden seleccionar
+-  Apagar capa deselecciona sus entidades
+
+#### `test_project_layers.py`
+
+**Módulo:** `tkcad.core.project` (ProjectIO)
+
+-  Round-trip save/load con capas
+-  Preservación de propiedades de capa (color, visibilidad)
+-  Migración automática de versión 1 a versión 2 (con capas)
+
+---
+
+### **Operaciones del Documento**
+
+#### `test_model.py`
+
+**Módulo:** `tkcad.core.model` (Document)
+
+-  Asignación de IDs secuenciales a entidades
+-  Sistema de notificación de cambios
+-  Selección básica (select_all, clear_selection, toggle_selection)
+-  Borrado de entidades seleccionadas y por tipo
+-  Búsqueda de entidades por ID
+-  Cálculo de bounding box
+
+#### `test_model_transforms.py`
+
+**Módulo:** `tkcad.core.model` (Document - transformaciones)
+
+-  `move_selected()` - traslación de entidades
+-  `copy_selected()` - copia sin tocar original
+-  `scale_selected()` - escalado desde punto base
+-  `rotate_selected()` - rotación por ángulo
+-  `mirror_selected()` - simetría respecto a eje
+-  Validación de desplazamiento cero
+
+#### `test_model_editing.py`
+
+**Módulo:** `tkcad.core.model` (Document - edición geométrica)
+
+-  `trim_line_by_line()` - recortar línea contra línea límite
+-  `extend_line_to_line()` - extender línea hasta límite
+-  Validación de intersecciones
+-  Casos de error (sin intersección, ya cruza)
+
+---
+
+### **Comandos de Dibujo**
+
+#### `test_commands.py`
+
+**Módulos:** `tkcad.commands.drawing.*`
+
+-  **LINEA**: creación de segmentos, encadenamiento, punto relativo, opciones L/ángulo
+-  **POLILINEA**: creación, cierre con "C", validación de puntos mínimos
+-  **CIRCULO**: preview con centro y radio dinámico
+
+---
+
+### **Geometría y Snaps**
+
+#### `test_geometry.py`
+
+**Módulo:** `tkcad.geometry.intersection` + `tkcad.geometry.projection`
+
+-  `line_line_intersection()` - intersección de dos líneas
+-  Líneas paralelas (sin intersección)
+-  `projection_param()` - proyección de punto sobre segmento
+-  Casos degenerados (segmento de longitud cero)
+
+#### `test_snapengine.py`
+
+**Módulo:** `tkcad.core.snapengine` (SnapEngine)
+
+-  Snap a GRID (cuadrícula)
+-  Snap a ENDPOINT (extremos)
+-  Snap a MIDPOINT (puntos medios)
+-  Snap a INTERSECTION (intersecciones)
+-  Snap ORTHO (horizontal/vertical desde base)
+-  Prioridad de snaps (ENDPOINT > GRID)
+-  Toggle y configuración de modos
+-  **Tolerancia adaptativa al zoom** (clave para zoom/pan)
+
+#### `test_ortho.py`
+
+**Módulos:** `tkcad.commands.view.ortho` + `tkcad.commands.drawing.line`
+
+-  Activación/desactivación del modo ORTHO
+-  Forzado ortogonal en comando LINEA
+-  Integración con SnapEngine
+
+---
+
+### **Comandos de Configuración**
+
+#### `test_capa.py`
+
+**Módulo:** `tkcad.commands.view.capa` (CapaCommand)
+
+-  Crear y cambiar capa actual
+-  ON/OFF de visibilidad
+-  Cambio de color de capa
+-  BLOQ/DESBLOQ (bloqueo)
+-  Protección contra borrar capa "0" o capa actual
+
+---
+
+## Resumen de Cobertura
+
+| Área | Tests | Módulos Cubiertos |
+| --- | --- | --- |
+| **Parser** | 10  | `core.parser` |
+| **Manager** | 9   | `core.manager` |
+| **Historial** | 6   | `core.model` (undo/redo) |
+| **Capas** | 13  | `core.layer`, `core.model`, `core.project` |
+| **Documento** | 15  | `core.model` (CRUD, selección, transforms, editing) |
+| **Comandos Dibujo** | 12  | `commands.drawing.*` |
+| **Geometría** | 5   | `geometry.intersection`, `geometry.projection` |
+| **Snaps** | 9   | `core.snapengine` |
+| **ORTHO** | 2   | `commands.view.ortho`, `commands.drawing.line` |
+| **Configuración** | 5   | `commands.view.capa` |
+
+**Total: ~86 tests** cubriendo toda la arquitectura del núcleo (`core/`, `geometry/`, `commands/`) de forma independiente a Tkinter.
+
+----
+
+## 📜 Licencia
+
+Este proyecto está licenciado bajo la **Licencia MIT** - una licencia de código abierto permisiva que permite el uso, modificación y distribución libre del software.
+
+### Resumen
+
+-  Uso comercial
+-  Modificación
+-  Distribución
+-  Uso privado
+-  Debe incluir el aviso de copyright y licencia
+
+Para más detalles, consulta el archivo [LICENSE](LICENSE) en este repositorio.
+
+**Copyright (c) 2026 Hernani Alemán Ferraz**
+
+----
+
+## Limitaciones Conocidas
+
+### 1. **Geometría y Edición**
+
+| Limitación | Evidencia en el código |
+| --- | --- |
+| `RECORTAR` y `EXTENDER` solo funcionan entre `LINEA` y límite `LINEA` | `test_model_editing.py` solo prueba `trim_line_by_line()` y `extend_line_to_line()` |
+| El snap `INTERSECCION` solo calcula intersecciones entre segmentos lineales | `test_snapengine.py` usa `make_line()` exclusivamente; `test_geometry.py` solo tiene `line_line_intersection()` |
+| `ESCALAR` es uniforme y solo con factor positivo | `test_model_transforms.py`: `scale_selected(Point(0,0), 2.0)` sin pruebas de factores negativos o escalado no uniforme |
+| Las elipses no participan en recortes ni intersecciones | No hay tests de trim/extend/intersection con `kind="ellipse"` |
+| No hay geometría para arcos en intersecciones | `intersection.py` solo tiene `line_line_intersection`, no hay `line_arc_intersection` ni `circle_circle_intersection` |
+
+### 2. **Snaps y Precisión**
+
+| Limitación | Evidencia |
+| --- | --- |
+| No hay marcadores visuales de snap | No hay tests ni módulos relacionados con render de snap markers |
+| Solo 5 modos de snap: GRID, ENDPOINT, MIDPOINT, INTERSECTION, ORTHO | `test_snapengine.py` solo prueba estos 5 modos |
+| Faltan snaps: CENTER, QUADRANT, TANGENT, PERPENDICULAR, NEAREST | Ausencia total en tests y en `snapengine.py` |
+| La tolerancia de snap se ajusta al zoom pero no hay feedback visual | `test_snapengine.py`: `test_tolerancia_de_snap_se_ajusta_con_el_zoom()` pero sin UI asociada |
+
+### 3. **Entidades y Dibujo**
+
+| Limitación | Evidencia |
+| --- | --- |
+| Solo 6 tipos de entidad: line, polyline, circle, arc, polygon, ellipse | `test_model.py` y estructura de `commands/drawing/` |
+| No hay soporte para texto, puntos, splines, hatch ni bloques | Ausencia en `commands/drawing/` y en los `kind` de entidades |
+| ARCO, POLIGONO y ELIPSE no tienen tests específicos de dibujo | `test_commands.py` solo prueba LINEA, POLILINEA y CIRCULO |
+| No hay edición de vértices individuales de polilíneas/polígonos | No hay tests de `add_vertex` o `remove_vertex` |
+
+### 4. **Interfaz y UX**
+
+| Limitación | Evidencia |
+| --- | --- |
+| No hay barra de herramientas (toolbar) | Solo `ui/canvas.py`, `ui/console.py`, `ui/grips.py` |
+| No hay panel de propiedades ni panel de capas GUI | La gestión de capas es solo por consola (`commands/view/capa.py`) |
+| No hay barra de estado con coordenadas en tiempo real | Ausencia de `statusbar.py` en `ui/` |
+| Selección solo por ventana rectangular | No hay tests de selección por polígono, fence o cíclica |
+
+### 5. **Archivos y Persistencia**
+
+| Limitación | Evidencia |
+| --- | --- |
+| Solo formato JSON propio | `core/project.py` solo tiene `ProjectIO` con JSON |
+| No hay exportación/importación DXF, SVG ni PNG | Ausencia de comandos `EXPORTAR`/`IMPORTAR` en `commands/file/` |
+| No hay control de cambios sin guardar (`modified`) | No hay tests de flag de modificación ni confirmación al salir |
+| No hay autoguardado | Ausencia total en tests y código |
+
+### 6. **Historial y Estado**
+
+| Limitación | Evidencia |
+| --- | --- |
+| El sistema de snapshots es completo pero no tiene límite de profundidad | `test_history.py` no prueba límites de memoria |
+| No hay agrupación de acciones complejas en un solo paso de undo | No hay tests de `begin_transaction()`/`end_transaction()` |
+
+---
+
+## Próximas Mejoras Sugeridas
+
+### **Prioridad Alta** (impacto directo en usabilidad)
+
+#### 1. Marcadores visuales de snap (Osnap visual)
+
+- Dibujar símbolos temporales (cuadrado, círculo, triángulo, X) cuando el cursor detecta un snap
+- Tooltip con el tipo de snap detectado
+- **Módulos a modificar:** `ui/canvas.py`, `core/snapengine.py`
+
+#### 2. Zoom y Pan avanzados
+
+- Zoom por ventana (seleccionar área con rectángulo)
+- Zoom extensión automático al abrir archivo
+- Zoom previo / siguiente (historial de vistas)
+- **Módulos a modificar:** `commands/view/zoom.py`, `core/model.py`
+
+#### 3. Geometría avanzada para snaps y edición
+
+- Intersecciones: línea-círculo, círculo-círculo, línea-arco, arco-arco
+- Recortar/extender con círculos y arcos como límites
+- **Módulos a modificar:** `geometry/intersection.py`, `core/model.py`, `commands/modify/recortar.py`, `commands/modify/extender.py`
+
+#### 4. Snaps adicionales
+
+- CENTER (centro de círculo/arco/elipse)
+- QUADRANT (cuadrantes de círculo/elipse)
+- TANGENT (tangente a círculo/arco)
+- PERPENDICULAR (perpendicular a línea)
+- NEAREST (punto más cercano sobre entidad)
+- **Módulos a modificar:** `core/snapengine.py`, `geometry/`
+
+---
+
+### **Prioridad Media** (funcionalidad CAD estándar)
+
+#### 5. Exportación DXF
+
+- Usar librería `ezdxf` para exportar entidades a formato estándar
+- Soporte inicial: LINE, LWPOLYLINE, CIRCLE, ARC, ELLIPSE, POLYGON
+- **Módulos a crear:** `commands/file/exportar.py`, `core/dxf_export.py`
+
+#### 6. Selección avanzada
+
+- Selección por polígono (window polygon / crossing polygon)
+- Selección cíclica (cycle through overlapping entities)
+- Selección por fence (línea de corte)
+- **Módulos a modificar:** `commands/view/seleccion.py`, `ui/canvas.py`
+
+#### 7. Edición de vértices con grips
+
+- Añadir vértice a polilínea/polígono
+- Eliminar vértice
+- Convertir segmento a arco (y viceversa)
+- **Módulos a modificar:** `ui/grips.py`, `core/model.py`
+
+#### 8. Control de cambios y autoguardado
+
+- Flag `modified` en `Document`
+- Confirmación al salir con cambios sin guardar
+- Autoguardado cada N minutos o cada M acciones
+- **Módulos a modificar:** `core/model.py`, `app.py`
+
+---
+
+### **Prioridad Baja** (mejoras de experiencia)
+
+#### 9. Interfaz gráfica mejorada
+
+- Toolbar con iconos de comandos frecuentes
+- Panel de capas GUI (visibilidad, color, bloqueo)
+- Panel de propiedades de entidad seleccionada
+- Barra de estado con coordenadas X,Y y modo snap activo
+- **Módulos a crear:** `ui/toolbar.py`, `ui/layer_panel.py`, `ui/properties.py`, `ui/statusbar.py`
+
+#### 10. Nuevas entidades
+
+- Texto (simple y multilinea)
+- Punto (con estilos de punto)
+- Spline (curva Bézier o NURBS)
+- Hatch (sombreado de áreas cerradas)
+- Bloques e inserción (reutilización de geometría)
+- **Módulos a crear:** `commands/drawing/texto.py`, `commands/drawing/punto.py`, `commands/drawing/spline.py`, etc.
+
+#### 11. Cotas y medidas
+
+- Cotas lineales, alineadas, angulares, radiales, diametrales
+- Estilo de cota configurable
+- **Módulos a crear:** `commands/dimension/`, `core/dimension.py`
+
+#### 12. Exportación de imagen
+
+- Exportar vista actual a PNG/SVG
+- Configurar resolución y fondo
+- **Módulos a crear:** `commands/file/exportar_imagen.py`
 
 ---
 
