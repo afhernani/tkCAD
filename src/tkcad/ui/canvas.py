@@ -421,6 +421,12 @@ class CadCanvas(tk.Canvas):
         if self.app._command_waiting_for_point():
             self._handle_point_click(event)
             return
+
+        # ← NUEVO: elegir entidad con clic
+        if self.app._command_waiting_for_entity():
+            self._handle_entity_pick(event)
+            return
+        
         # si no comprobamos grips.
         grip = self.grip_manager.get_grip_at(event.x, event.y)
 
@@ -672,3 +678,32 @@ class CadCanvas(tk.Canvas):
 
     def _on_pan_release(self, event):
         self.pan_last = None
+
+    # ---------------------------------
+    # RECOGER IDENTITY CON EL RATON
+    # ---------------------------------
+
+    def _pick_entity_at(self, x, y, margin=4):
+        """Devuelve el id de la entidad bajo el cursor, o None."""
+        items = self.find_overlapping(
+            x - margin, y - margin, x + margin, y + margin,
+        )
+        for item in reversed(items):
+            entity_id = self.item_to_entity.get(item)
+            if entity_id is not None:
+                return entity_id
+        return None
+
+    def _handle_entity_pick(self, event):
+        entity_id = self._pick_entity_at(event.x, event.y)
+
+        if entity_id is None:
+            self.app.write("No hay ninguna entidad ahí.")
+            return
+
+        # Inyecta el ID como si se hubiera tecleado.
+        self.app.manager.process_input(str(entity_id))
+
+        if hasattr(self.app, "console"):
+            self.app.console.entry.focus_set()
+        self.app._update_command_cursor()

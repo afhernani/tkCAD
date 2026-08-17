@@ -161,5 +161,9 @@ class TrimCommand(Command):
     def expects_point(self) -> bool:
         return self.state == TrimState.KEEP_POINT
 
+    def expects_entity(self) -> bool:
+        # En los estados de ID aceptamos clic; en KEEP_POINT, punto.
+        return self.state in (TrimState.LIMIT_ID, TrimState.TARGET_ID)
+
     def get_point_base(self):
         return None

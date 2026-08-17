@@ -82,11 +82,25 @@ class CadApp(Document):
             and self.manager.is_waiting_for_point()
         )
 
+    def _command_waiting_for_entity(self) -> bool:
+        """True si el comando activo espera elegir una entidad con clic."""
+        return (
+            hasattr(self, "manager")
+            and self.manager.active is not None
+            and getattr(self.manager.active, "expects_entity", lambda: False)()
+        )
+
     def _update_command_cursor(self):
-        if self._command_waiting_for_point():
-            self.canvas.config(cursor="crosshair")
+        """Ajustar el cursor del canvas al estado del comando activo"""
+        if not hasattr(self, "canvas"):
+            return
+
+        if self._command_waiting_for_entity():
+            self.canvas.config(cursor="target")      # elegir entidad
+        elif self._command_waiting_for_point():
+            self.canvas.config(cursor="tcross")      # introducir punto
         else:
-            self.canvas.config(cursor="arrow")
+            self.canvas.config(cursor="arrow")       # normal
 
     # Seleccionar entidades por ventana de selección
     def _select_by_window(self, x0, y0, x1, y1, action="replace"):

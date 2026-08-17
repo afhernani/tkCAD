@@ -31,5 +31,9 @@ class Command:
     def expects_point(self) -> bool:
         return False
 
+    def expects_entity(self) -> bool:
+        """True si el comando acepta elegir entidad con un clic."""
+        return False
+
     def get_point_base(self):
         return None

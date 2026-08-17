@@ -111,3 +111,6 @@ class ExtendCommand(Command):
             return CommandResult.FINISHED
 
         return CommandResult.FINISHED
+
+    def expects_entity(self) -> bool:
+        return self.state in (ExtendState.LIMIT_ID, ExtendState.TARGET_ID)  # ajusta a tu Enum
