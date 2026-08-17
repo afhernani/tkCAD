@@ -823,7 +823,7 @@ class Document:
     def extend_line_to_line(self, limit_id: int, target_id: int):
         # Import perezoso: geometry importa de core, así que core
         # no puede importar geometry a nivel de módulo (circular).
-        from ..geometry import line_line_intersection
+        from ..geometry import line_line_intersection_infinite
 
         limit = self.get_entity_by_id(limit_id)
         target = self.get_entity_by_id(target_id)
@@ -843,10 +843,16 @@ class Document:
         c = target.data["start"]
         d = target.data["end"]
 
-        inter = line_line_intersection(a, b, c, d)
+        # Validar que ninguna línea sea degenerada (punto)
+        if (abs(b.x - a.x) < EPS and abs(b.y - a.y) < EPS):
+            return False, "La línea límite es degenerada (start == end)."
+        if (abs(d.x - c.x) < EPS and abs(d.y - c.y) < EPS):
+            return False, "La línea a extender es degenerada (start == end)."
+
+        inter = line_line_intersection_infinite(a, b, c, d)
 
         if inter is None:
-            return False, "Las líneas no se cortan."
+            return False, "Las líneas son paralelas."
 
         p, t_limit, u_target = inter
 
