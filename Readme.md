@@ -111,9 +111,9 @@ Teclas especiales:
 | `MALLA`       | `GRID`                  | Activa/desactiva malla y snap a malla.                                         |
 | `VERMALLA`    | `VERGRID`               | Muestra/oculta la malla en pantalla.                                           |
 | `CAPA`        | `CAPAS`, `LA`           | Gestor de capas: crear, cambiar, ON/OFF, color, bloqueo                        |
-| `ZOOM`        | `ZOOM`, `Z`             | Gestor de zoom: + , -, Todo, T/EXT, 2 (o 0.5, etc..)
-                                                    |
-| `ORTHO`       | `ORT`, `F8`             | Activa/desactiva el forzado ortogonal |
+| `ZOOM`        | `ZOOM`, `Z`             | Gestor de zoom: + , -, Todo, T/EXT, 2 (o 0.5, etc..)                           |
+| `ORTHO`       | `ORT`, `F8`             | Activa/desactiva el forzado ortogonal                                          |
+
 ---
 
 ## 📐 Entrada de coordenadas
@@ -359,23 +359,7 @@ Cubiertos actualmente:
 
 ## 📜 Licencia
 
-MIT
-
-```adoc
----
-
-## Paso siguiente
-
-1. Crea también la carpeta `docs/` y dentro deja un `screenshot.png` (puedes poner una captura de la app cuando quieras).
-2. Añade al `.gitignore` si no lo tenías:
-
-```gitignore
-# Screenshots generadas
-*.png
-# ... pero no docs/screenshot.png
-```
-
-(o simplemente no ignores PNG si quieres incluirlo en el repo).
+    MIT
 
 3. Ejecuta:
 
@@ -401,11 +385,6 @@ git commit -m "docs: README completo con arquitectura y guía para añadir coman
 
 ## 🔮 Próximas mejoras previstas
 
-- Deshacer / rehacer.
-- Zoom y pan.
-- Marcadores visuales de snap y snaps adicionales (cuadrante, tangente, centro).
-- Selección por polígono y selección cíclica.
-- Añadir/eliminar vértices con grips.
 - Recortar/extender con más tipos de entidades.
 - Intersecciones con círculos, arcos y elipses.
 - Exportación/importación DXF.
@@ -414,4 +393,4 @@ git commit -m "docs: README completo con arquitectura y guía para añadir coman
 
 ---
 
-*Proyecto en desarrollo — Bixcoot.*
+*Proyecto en desarrollo — tkCAD.*
