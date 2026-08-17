@@ -1154,3 +1154,128 @@ class Document:
         self._pending_snapshot = None
         self._mutated = False
         return True
+
+    # -------------------------------
+    # VENTANA SELECCION
+    #--------------------------------
+
+    def select_by_rectangle(
+        self,
+        min_x: float,
+        min_y: float,
+        max_x: float,
+        max_y: float,
+        mode: str = "window",
+        action: str = "replace",
+    ) -> int:
+        """
+        Selecciona entidades dentro de un rectángulo.
+        
+        Args:
+            min_x, min_y, max_x, max_y: Coordenadas del rectángulo (mundo)
+            mode: "window" (todo dentro) o "crossing" (toca el rectángulo)
+            action: "replace", "add", "remove"
+        
+        Returns:
+            Número de entidades seleccionadas/deseleccionadas
+        """
+        matching_ids = []
+        
+        for entity in self.entities:
+            bbox = self._get_entity_bbox(entity)
+            if bbox is None:
+                continue
+            
+            ent_min_x, ent_min_y, ent_max_x, ent_max_y = bbox
+            
+            if mode == "window":
+                # Window: toda la entidad debe estar dentro
+                if (ent_min_x >= min_x - EPS and ent_max_x <= max_x + EPS and
+                    ent_min_y >= min_y - EPS and ent_max_y <= max_y + EPS):
+                    matching_ids.append(entity.id)
+            else:
+                # Crossing: la entidad debe tocar el rectángulo
+                if (ent_max_x >= min_x - EPS and ent_min_x <= max_x + EPS and
+                    ent_max_y >= min_y - EPS and ent_min_y <= max_y + EPS):
+                    matching_ids.append(entity.id)
+        
+        # Aplicar la acción
+        count = 0
+        if action == "replace":
+            self.clear_selection()
+            for entity_id in matching_ids:
+                self.toggle_selection(entity_id)
+                count += 1
+        elif action == "add":
+            for entity_id in matching_ids:
+                entity = self.get_entity_by_id(entity_id)
+                if entity and not entity.selected:
+                    self.toggle_selection(entity_id)
+                    count += 1
+        elif action == "remove":
+            for entity_id in matching_ids:
+                entity = self.get_entity_by_id(entity_id)
+                if entity and entity.selected:
+                    self.toggle_selection(entity_id)
+                    count += 1
+        
+        return count
+
+
+    def _get_entity_bbox(self, entity):
+        """
+        Calcula el bounding box de una entidad en coordenadas de mundo.
+        
+        Returns:
+            (min_x, min_y, max_x, max_y) o None si no se puede calcular
+        """
+        if entity.kind == "line":
+            start = entity.data["start"]
+            end = entity.data["end"]
+            return (
+                min(start.x, end.x),
+                min(start.y, end.y),
+                max(start.x, end.x),
+                max(start.y, end.y),
+            )
+        
+        elif entity.kind in ("polyline", "polygon"):
+            points = entity.data["points"]
+            if not points:
+                return None
+            xs = [p.x for p in points]
+            ys = [p.y for p in points]
+            return (min(xs), min(ys), max(xs), max(ys))
+        
+        elif entity.kind == "circle":
+            center = entity.data["center"]
+            radius = entity.data["radius"]
+            return (
+                center.x - radius,
+                center.y - radius,
+                center.x + radius,
+                center.y + radius,
+            )
+        
+        elif entity.kind == "arc":
+            center = entity.data["center"]
+            radius = entity.data["radius"]
+            return (
+                center.x - radius,
+                center.y - radius,
+                center.x + radius,
+                center.y + radius,
+            )
+        
+        elif entity.kind == "ellipse":
+            center = entity.data["center"]
+            rx = float(entity.data["radius_x"])
+            ry = float(entity.data["radius_y"])
+            return (
+                center.x - rx,
+                center.y - ry,
+                center.x + rx,
+                center.y + ry,
+            )
+        
+        return None    
