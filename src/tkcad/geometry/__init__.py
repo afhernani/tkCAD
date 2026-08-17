@@ -8,6 +8,7 @@ from .intersection import (
 )
 from .projection import projection_param
 from .utils import EPS
+from .polygon import point_in_polygon, bbox_vs_polygon
 
 __all__ = [
     "line_line_intersection",
@@ -18,4 +19,6 @@ __all__ = [
     "arc_arc_intersection",
     "projection_param",
     "EPS",
+    "point_in_polygon",
+    "bbox_vs_polygon",
 ]

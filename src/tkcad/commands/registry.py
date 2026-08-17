@@ -37,6 +37,7 @@ from .view.snap import SnapCommand, GridCommand, ShowGridCommand
 from .view.capa import CapaCommand
 from .view.zoom import ZoomCommand
 from .view.ortho import OrthoCommand
+from .view.seleccion_poligono import SeleccionPoligonoCommand
 
 # System
 from .system.ayuda import HelpCommand
@@ -75,6 +76,7 @@ ALL_COMMANDS: List[Type[Command]] = [
     CapaCommand,
     ZoomCommand,
     OrthoCommand,
+    SeleccionPoligonoCommand,
     # System
     HelpCommand,
     ExitCommand,

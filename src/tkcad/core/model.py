@@ -1345,29 +1345,9 @@ class Document:
                 if (ent_max_x >= min_x - EPS and ent_min_x <= max_x + EPS and
                     ent_max_y >= min_y - EPS and ent_min_y <= max_y + EPS):
                     matching_ids.append(entity.id)
-        
-        # Aplicar la acción
-        count = 0
-        if action == "replace":
-            self.clear_selection()
-            for entity_id in matching_ids:
-                self.toggle_selection(entity_id)
-                count += 1
-        elif action == "add":
-            for entity_id in matching_ids:
-                entity = self.get_entity_by_id(entity_id)
-                if entity and not entity.selected:
-                    self.toggle_selection(entity_id)
-                    count += 1
-        elif action == "remove":
-            for entity_id in matching_ids:
-                entity = self.get_entity_by_id(entity_id)
-                if entity and entity.selected:
-                    self.toggle_selection(entity_id)
-                    count += 1
-        
-        return count
 
+        # ← delega la aplicación de la acción (sin duplicar lógica)
+        return self._apply_selection_action(matching_ids, action)
 
     def _get_entity_bbox(self, entity):
         """
@@ -1425,4 +1405,53 @@ class Document:
                 center.y + ry,
             )
         
-        return None    
+        return None
+
+    def select_by_polygon(self, poly, mode="window", action="replace") -> int:
+        """
+        Selecciona entidades dentro de (o que tocan) un polígono.
+        """
+        from ..geometry import bbox_vs_polygon
+
+        matching = []
+        for entity in self.entities:
+            bbox = self._get_entity_bbox(entity)
+            if bbox is None:
+                continue
+            if bbox_vs_polygon(bbox, poly, mode):
+                matching.append(entity.id)
+
+        return self._apply_selection_action(matching, action)
+
+    def _apply_selection_action(self, matching_ids, action) -> int:
+        """
+        Aplica una acción de selección (replace/add/remove) sobre una lista de IDs.
+        
+        Único lugar donde vive esta lógica: lo usan select_by_rectangle,
+        select_by_polygon y cualquier selección futura.
+        
+        Returns:
+            Número de entidades afectadas
+        """
+        count = 0
+        if action == "replace":
+            self.clear_selection()
+            for eid in matching_ids:
+                self.toggle_selection(eid)
+                count += 1
+
+        elif action == "add":
+            for eid in matching_ids:
+                e = self.get_entity_by_id(eid)
+                if e and not e.selected:
+                    self.toggle_selection(eid)
+                    count += 1
+
+        elif action == "remove":
+            for eid in matching_ids:
+                e = self.get_entity_by_id(eid)
+                if e and e.selected:
+                    self.toggle_selection(eid)
+                    count += 1
+
+        return count

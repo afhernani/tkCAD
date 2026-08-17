@@ -30,15 +30,7 @@ class CadApp(Document):
 
         self.preview_line = None
         self.preview_points = None
-
-        # self.snap_modes = {
-        #     "GRID",
-        #     "ENDPOINT",
-        #     "MIDPOINT",
-        # }
-
-        # self.grid_size = 10.0
-        # self.snap_tolerance_pixels = 8
+        
         self.snaps = SnapEngine()
 
         self.show_grid = True

@@ -28,6 +28,11 @@ class CadCanvas(tk.Canvas):
 
         # Estado visible snap
         self.snap_drawer = SnapMarkerDrawer(self)
+
+        # seleccionpoligono y ciclica
+        self._cycle_last_pos = None
+        self._cycle_candidates = []
+        self._cycle_index = 0
         
         self.grip_manager = None
         # seguir el puntero del ratón.
@@ -544,32 +549,49 @@ class CadCanvas(tk.Canvas):
     
     def _on_canvas_click(self, event):
         margin = 4
-
         items = self.find_overlapping(
-            event.x - margin,
-            event.y - margin,
-            event.x + margin,
-            event.y + margin,
+            event.x - margin, event.y - margin,
+            event.x + margin, event.y + margin,
         )
-        # Recorremos de arriba hacia abajo para elegir la entidad
-        # más visible bajo el cursor.
+
+        # Candidatos de arriba hacia abajo, sin duplicados
+        candidates = []
         for item in reversed(items):
-            entity_id = self.item_to_entity.get(item)
-            
-            if entity_id is not None:
-                self.app.toggle_selection(entity_id)
+            eid = self.item_to_entity.get(item)
+            if eid is not None and eid not in candidates:
+                candidates.append(eid)
 
-                if hasattr(self, "console"):
-                    self.app.console.entry.focus_set()
+        if not candidates:
+            self.app.clear_selection()
+            self._reset_cycle()
+            return
 
-                return
+        same_spot = (
+            self._cycle_last_pos is not None
+            and abs(event.x - self._cycle_last_pos[0]) <= self.drag_threshold
+            and abs(event.y - self._cycle_last_pos[1]) <= self.drag_threshold
+        )
 
-        # Si quieres que un clic en vacío limpie la selección,
-        # descomenta esta línea:
-        self.app.clear_selection()
+        if same_spot and candidates == self._cycle_candidates and len(candidates) > 1:
+            # Ciclar al siguiente
+            self._cycle_index = (self._cycle_index + 1) % len(candidates)
+            self.app.clear_selection()
+            self.app.toggle_selection(candidates[self._cycle_index])
+        else:
+            # Primer clic: conmuta el de arriba
+            self._cycle_index = 0
+            self.app.toggle_selection(candidates[0])
+
+        self._cycle_last_pos = (event.x, event.y)
+        self._cycle_candidates = candidates
 
         if hasattr(self, "console"):
             self.app.console.entry.focus_set()
+
+    def _reset_cycle(self):
+        self._cycle_last_pos = None
+        self._cycle_candidates = []
+        self._cycle_index = 0
 
     def _on_motion(self, event):
         self._update_snap_marker(event)
