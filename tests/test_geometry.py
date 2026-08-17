@@ -163,41 +163,71 @@ def test_circulos_concentricos():
 
 
 # ============================================================
-# INTERSECCIÓN LÍNEA-ARCO
+# INTERSECCIÓN LÍNEA-ARCO (con start_angle + extent)
 # ============================================================
 
-def test_linea_cruza_arco():
+def test_linea_cruza_arco_semicirculo():
     a, b = Point(-10, 0), Point(10, 0)
     center, radius = Point(0, 0), 5.0
-    # Arco de 0° a 180° (semicírculo superior)
+    # Arco de 0° con extensión 180° (semicírculo superior)
     hits = line_arc_intersection(a, b, center, radius, 0, 180)
-    # La línea y=0 toca el arco en (5,0) y (-5,0), ambos en los extremos del arco
+    # La línea y=0 toca el arco en (5,0)→0° y (-5,0)→180°
     assert len(hits) == 2
 
 
 def test_linea_cruza_circulo_pero_no_el_arco():
     a, b = Point(-10, 0), Point(10, 0)
     center, radius = Point(0, 0), 5.0
-    # Arco de 90° a 270° (semicírculo izquierdo)
-    hits = line_arc_intersection(a, b, center, radius, 90, 270)
-    # Solo (-5, 0) está en el arco (ángulo 180°)
+    # Arco de 90° con extensión 180° (semicírculo izquierdo: 90° a 270°)
+    hits = line_arc_intersection(a, b, center, radius, 90, 180)
+    # Solo (-5, 0) con ángulo 180° está en el arco
     assert len(hits) == 1
     assert hits[0][0].x == pytest.approx(-5.0, abs=1e-9)
 
 
+def test_linea_no_cruza_arco():
+    a, b = Point(-10, 0), Point(10, 0)
+    center, radius = Point(0, 0), 5.0
+    # Arco de 90° con extensión 90° (solo segundo cuadrante: 90° a 180°)
+    # La línea y=0 cruza en 0° y 180°
+    # 0° NO está en [90°, 180°], 180° SÍ está (en el borde)
+    hits = line_arc_intersection(a, b, center, radius, 90, 90)
+    # Solo el punto en 180° podría estar (depende de EPS)
+    assert len(hits) <= 1
+
+
+def test_arco_que_cruza_cero():
+    a, b = Point(-10, 0), Point(10, 0)
+    center, radius = Point(0, 0), 5.0
+    # Arco de 350° con extensión 20° → cubre de 350° a 10°
+    hits = line_arc_intersection(a, b, center, radius, 350, 20)
+    # El punto (5,0) tiene ángulo 0°, que está en [350°, 10°]
+    assert len(hits) == 1
+    assert hits[0][0].x == pytest.approx(5.0, abs=1e-9)
+
+
 # ============================================================
-# UTILIDAD: ÁNGULO EN ARCO
+# UTILIDAD: ÁNGULO EN ARCO (con start_angle + extent)
 # ============================================================
 
 def test_angulo_en_arco_normal():
     from tkcad.geometry.intersection import _angle_in_arc
+    # Arco de 0° con extensión 90°
     assert _angle_in_arc(45, 0, 90) is True
     assert _angle_in_arc(100, 0, 90) is False
 
 
 def test_angulo_en_arco_que_cruza_cero():
     from tkcad.geometry.intersection import _angle_in_arc
-    # Arco de 350° a 10°
-    assert _angle_in_arc(355, 350, 10) is True
-    assert _angle_in_arc(5, 350, 10) is True
-    assert _angle_in_arc(180, 350, 10) is False
+    # Arco de 350° con extensión 20° → cubre [350°, 10°]
+    assert _angle_in_arc(355, 350, 20) is True
+    assert _angle_in_arc(5, 350, 20) is True
+    assert _angle_in_arc(180, 350, 20) is False
+
+
+def test_angulo_en_arco_completo():
+    from tkcad.geometry.intersection import _angle_in_arc
+    # Arco de 0° con extensión 360° (círculo completo)
+    assert _angle_in_arc(0, 0, 360) is True
+    assert _angle_in_arc(180, 0, 360) is True
+    assert _angle_in_arc(359, 0, 360) is True

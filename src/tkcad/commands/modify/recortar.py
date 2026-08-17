@@ -3,9 +3,13 @@
 from enum import Enum, auto
 
 from ...core import Command, CommandResult, parse_point
-# from ...geometry import
-# from ..view.snap import 
-# from ..view.seleccion import
+
+# Tipos de entidad válidos como LÍMITE de recorte
+VALID_LIMIT_KINDS = {"line", "circle", "arc"}
+
+# Tipos de entidad válidos como TARGET a recortar
+VALID_TARGET_KINDS = {"line"}
+
 
 class TrimState(Enum):
     LIMIT_ID = auto()
@@ -27,10 +31,12 @@ class TrimCommand(Command):
             ctx.write("No hay entidades para recortar.")
             return CommandResult.FINISHED
 
-        ctx.write("Por ahora RECORTAR funciona con LINEA y límite LINEA.")
+        # ✏️ CAMBIO: mensaje actualizado con los tipos soportados
+        ctx.write("RECORTAR soporta límites: LINEA, CIRCULO, ARCO.")
+        ctx.write("Entidad a recortar: LINEA.")
         ctx.write("Usa LISTAR para ver los IDs de entidades.")
 
-        ctx.prompt("ID de la línea límite:")
+        ctx.prompt("ID de la entidad límite (o Enter para cancelar):")
 
         return None
 
@@ -46,12 +52,12 @@ class TrimCommand(Command):
             return CommandResult.FINISHED
 
         # ----------------------------------------------------
-        # ID línea límite
+        # ID entidad límite
         # ----------------------------------------------------
         if self.state == TrimState.LIMIT_ID:
             if not text.isdigit():
                 ctx.write("Debes escribir un ID numérico.")
-                ctx.prompt("ID de la línea límite:")
+                ctx.prompt("ID de la entidad límite:")
                 return CommandResult.RUNNING
 
             entity_id = int(text)
@@ -59,54 +65,65 @@ class TrimCommand(Command):
 
             if entity is None:
                 ctx.write(f"No existe la entidad {entity_id}.")
-                ctx.prompt("ID de la línea límite:")
+                ctx.prompt("ID de la entidad límite:")
                 return CommandResult.RUNNING
 
-            if entity.kind != "line":
-                ctx.write("Por ahora la entidad límite debe ser una LINEA.")
-                ctx.prompt("ID de la línea límite:")
+            # ✏️ CAMBIO: validar contra el conjunto de tipos válidos
+            if entity.kind not in VALID_LIMIT_KINDS:
+                kinds_str = ", ".join(k.upper() for k in sorted(VALID_LIMIT_KINDS))
+                ctx.write(
+                    f"La entidad límite debe ser: {kinds_str}. "
+                    f"(La entidad {entity_id} es {entity.kind.upper()}.)"
+                )
+                ctx.prompt("ID de la entidad límite:")
                 return CommandResult.RUNNING
 
             self.limit_id = entity_id
             self.state = TrimState.TARGET_ID
 
-            ctx.write(f"Línea límite: {entity_id}")
-            ctx.prompt("ID de la línea a recortar:")
+            # ✏️ CAMBIO: mensaje genérico según el tipo
+            ctx.write(f"Límite ({entity.kind.upper()}): {entity_id}")
+            ctx.prompt("ID de la entidad a recortar:")
 
             return CommandResult.RUNNING
 
         # ----------------------------------------------------
-        # ID línea a recortar
+        # ID entidad a recortar
         # ----------------------------------------------------
         if self.state == TrimState.TARGET_ID:
             if not text.isdigit():
                 ctx.write("Debes escribir un ID numérico.")
-                ctx.prompt("ID de la línea a recortar:")
+                ctx.prompt("ID de la entidad a recortar:")
                 return CommandResult.RUNNING
 
             entity_id = int(text)
 
             if entity_id == self.limit_id:
                 ctx.write("La entidad a recortar no puede ser la misma que el límite.")
-                ctx.prompt("ID de la línea a recortar:")
+                ctx.prompt("ID de la entidad a recortar:")
                 return CommandResult.RUNNING
 
             entity = ctx.get_entity_by_id(entity_id)
 
             if entity is None:
                 ctx.write(f"No existe la entidad {entity_id}.")
-                ctx.prompt("ID de la línea a recortar:")
+                ctx.prompt("ID de la entidad a recortar:")
                 return CommandResult.RUNNING
 
-            if entity.kind != "line":
-                ctx.write("Por ahora la entidad a recortar debe ser una LINEA.")
-                ctx.prompt("ID de la línea a recortar:")
+            # ✏️ CAMBIO: validar contra el conjunto de targets válidos
+            if entity.kind not in VALID_TARGET_KINDS:
+                kinds_str = ", ".join(k.upper() for k in sorted(VALID_TARGET_KINDS))
+                ctx.write(
+                    f"La entidad a recortar debe ser: {kinds_str}. "
+                    f"(La entidad {entity_id} es {entity.kind.upper()}.)"
+                )
+                ctx.prompt("ID de la entidad a recortar:")
                 return CommandResult.RUNNING
 
             self.target_id = entity_id
             self.state = TrimState.KEEP_POINT
 
-            ctx.write(f"Línea a recortar: {entity_id}")
+            ctx.write(f"Entidad a recortar ({entity.kind.upper()}): {entity_id}")
             ctx.prompt("Punto a conservar:")
 
             return CommandResult.RUNNING
@@ -122,13 +139,20 @@ class TrimCommand(Command):
                 ctx.prompt("Punto a conservar:")
                 return CommandResult.RUNNING
 
-            ok, message = ctx.trim_line_by_line(
+            # ✏️ CAMBIO: usar el dispatcher genérico en vez de trim_line_by_line
+            ctx.mark_action()
+            ok, message = ctx.trim_by_entity(
                 self.limit_id,
                 self.target_id,
                 keep_point,
             )
+            ctx.commit_action()
 
             ctx.write(message)
+
+            # Si falló, revertir el snapshot vacío
+            if not ok:
+                ctx.undo()
 
             return CommandResult.FINISHED
 

@@ -876,6 +876,191 @@ class Document:
 
         return True, "Entidad extendida correctamente."
 
+    def trim_line_by_circle(self, limit_id: int, target_id: int, keep_point: Point):
+        """
+        Recorta una línea usando un círculo como límite.
+        
+        Args:
+            limit_id: ID del círculo límite
+            target_id: ID de la línea a recortar
+            keep_point: Punto que indica qué lado de la línea conservar
+        
+        Returns:
+            (bool, str): (éxito, mensaje)
+        """
+        from ..geometry import line_circle_intersection, projection_param
+
+        limit = self.get_entity_by_id(limit_id)
+        target = self.get_entity_by_id(target_id)
+
+        if limit is None or target is None:
+            return False, "Entidad no encontrada."
+        if limit.kind != "circle":
+            return False, "El límite debe ser un círculo."
+        if target.kind != "line":
+            return False, "Por ahora solo se recortan líneas."
+        if limit_id == target_id:
+            return False, "El límite y la entidad a recortar no pueden ser la misma."
+
+        a = target.data["start"]
+        b = target.data["end"]
+        center = limit.data["center"]
+        radius = limit.data["radius"]
+
+        # Validar línea degenerada
+        if abs(b.x - a.x) < EPS and abs(b.y - a.y) < EPS:
+            return False, "La línea a recortar es degenerada."
+
+        # Calcular intersecciones de la línea con el círculo
+        hits = line_circle_intersection(a, b, center, radius)
+
+        if not hits:
+            return False, "La línea no intersecta el círculo."
+
+        # Ordenar intersecciones por parámetro t
+        hits.sort(key=lambda h: h[1])
+
+        # Proyectar keep_point sobre la línea para saber qué lado mantener
+        t_keep = projection_param(keep_point, a, b)
+
+        if len(hits) == 1:
+            # Tangente o un solo cruce: recortar en ese punto
+            hit_point, t_hit = hits[0]
+            if t_keep < t_hit:
+                target.data["end"] = hit_point
+            else:
+                target.data["start"] = hit_point
+
+        elif len(hits) == 2:
+            # Dos cruces: decidir qué segmento mantener
+            (p1, t1), (p2, t2) = hits
+
+            if t_keep < t1:
+                # Mantener el segmento antes del primer cruce
+                target.data["end"] = p1
+            elif t_keep > t2:
+                # Mantener el segmento después del segundo cruce
+                target.data["start"] = p2
+            else:
+                # Mantener el segmento entre los dos cruces
+                target.data["start"] = p1
+                target.data["end"] = p2
+
+        self.notify_change()
+        return True, "Línea recortada con círculo."
+
+    def trim_line_by_arc(self, limit_id: int, target_id: int, keep_point: Point):
+        """
+        Recorta una línea usando un arco como límite.
+        
+        Args:
+            limit_id: ID del arco límite
+            target_id: ID de la línea a recortar
+            keep_point: Punto que indica qué lado de la línea conservar
+        
+        Returns:
+            (bool, str): (éxito, mensaje)
+        """
+        from ..geometry import line_arc_intersection, projection_param
+
+        limit = self.get_entity_by_id(limit_id)
+        target = self.get_entity_by_id(target_id)
+
+        if limit is None or target is None:
+            return False, "Entidad no encontrada."
+        if limit.kind != "arc":
+            return False, "El límite debe ser un arco."
+        if target.kind != "line":
+            return False, "Por ahora solo se recortan líneas."
+        if limit_id == target_id:
+            return False, "El límite y la entidad a recortar no pueden ser la misma."
+
+        a = target.data["start"]
+        b = target.data["end"]
+        center = limit.data["center"]
+        radius = limit.data["radius"]
+        start_angle = limit.data["start_angle"]
+        extent = limit.data["extent"]
+
+        # Validar línea degenerada
+        if abs(b.x - a.x) < EPS and abs(b.y - a.y) < EPS:
+            return False, "La línea a recortar es degenerada."
+
+        # Calcular intersecciones de la línea con el arco
+        hits = line_arc_intersection(a, b, center, radius, start_angle, extent)
+
+        if not hits:
+            return False, "La línea no intersecta el arco."
+
+        # Ordenar intersecciones por parámetro t
+        hits.sort(key=lambda h: h[1])
+
+        # Proyectar keep_point sobre la línea
+        t_keep = projection_param(keep_point, a, b)
+
+        if len(hits) == 1:
+            hit_point, t_hit = hits[0]
+            if t_keep < t_hit:
+                target.data["end"] = hit_point
+            else:
+                target.data["start"] = hit_point
+
+        elif len(hits) == 2:
+            (p1, t1), (p2, t2) = hits
+
+            if t_keep < t1:
+                target.data["end"] = p1
+            elif t_keep > t2:
+                target.data["start"] = p2
+            else:
+                target.data["start"] = p1
+                target.data["end"] = p2
+
+        self.notify_change()
+        return True, "Línea recortada con arco."
+
+    def trim_by_entity(self, limit_id: int, target_id: int, keep_point: Point):
+        """
+        Dispatcher genérico de recorte.
+        Elige el método adecuado según el tipo de entidad límite.
+        
+        Args:
+            limit_id: ID de la entidad límite
+            target_id: ID de la entidad a recortar
+            keep_point: Punto que indica qué lado conservar
+        
+        Returns:
+            (bool, str): (éxito, mensaje)
+        """
+        limit = self.get_entity_by_id(limit_id)
+        target = self.get_entity_by_id(target_id)
+
+        if limit is None:
+            return False, f"Entidad límite {limit_id} no encontrada."
+        if target is None:
+            return False, f"Entidad {target_id} no encontrada."
+
+        limit_kind = limit.kind
+        target_kind = target.kind
+
+        # --- Línea contra Línea ---
+        if limit_kind == "line" and target_kind == "line":
+            return self.trim_line_by_line(limit_id, target_id, keep_point)
+
+        # --- Línea contra Círculo ---
+        if limit_kind == "circle" and target_kind == "line":
+            return self.trim_line_by_circle(limit_id, target_id, keep_point)
+
+        # --- Línea contra Arco ---
+        if limit_kind == "arc" and target_kind == "line":
+            return self.trim_line_by_arc(limit_id, target_id, keep_point)
+
+        # --- Combinación no soportada ---
+        return False, (
+            f"RECORTAR no soporta {target_kind.upper()} "
+            f"con límite {limit_kind.upper()}."
+        )
+
     # ----------------------------------------
     # ZOOM y PAN
     # ----------------------------------------

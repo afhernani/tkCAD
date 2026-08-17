@@ -191,7 +191,7 @@ def circle_circle_intersection(c1: Point, r1: float, c2: Point, r2: float):
 
 
 def line_arc_intersection(a: Point, b: Point, center: Point, radius: float,
-                          start_angle: float, end_angle: float):
+                          start_angle: float, extent: float):
     """
     Intersección entre un segmento de línea y un arco.
     
@@ -200,7 +200,7 @@ def line_arc_intersection(a: Point, b: Point, center: Point, radius: float,
         center: Centro del arco
         radius: Radio del arco
         start_angle: Ángulo inicial en grados
-        end_angle: Ángulo final en grados
+        extent: Extensión angular en grados
     
     Returns:
         Lista de tuplas (Point, t) donde t es el parámetro sobre AB.
@@ -212,20 +212,20 @@ def line_arc_intersection(a: Point, b: Point, center: Point, radius: float,
     results = []
     for point, t in circle_hits:
         angle = math.degrees(math.atan2(point.y - center.y, point.x - center.x))
-        if _angle_in_arc(angle, start_angle, end_angle):
+        if _angle_in_arc(angle, start_angle, extent):
             results.append((point, t))
 
     return results
 
 
-def arc_arc_intersection(c1: Point, r1: float, start1: float, end1: float,
-                         c2: Point, r2: float, start2: float, end2: float):
+def arc_arc_intersection(c1: Point, r1: float, start1: float, extent1: float,
+                         c2: Point, r2: float, start2: float, extent2: float):
     """
     Intersección entre dos arcos.
     
     Args:
-        c1, r1, start1, end1: Centro, radio y ángulos del primer arco
-        c2, r2, start2, end2: Centro, radio y ángulos del segundo arco
+        c1, r1, start1, extent1: Centro, radio, ángulo inicial y extensión del primer arco
+        c2, r2, start2, extent2: Centro, radio, ángulo inicial y extensión del segundo arco
     
     Returns:
         Lista de Point con los puntos de intersección.
@@ -239,33 +239,37 @@ def arc_arc_intersection(c1: Point, r1: float, start1: float, end1: float,
         angle1 = math.degrees(math.atan2(point.y - c1.y, point.x - c1.x))
         angle2 = math.degrees(math.atan2(point.y - c2.y, point.x - c2.x))
 
-        if _angle_in_arc(angle1, start1, end1) and _angle_in_arc(angle2, start2, end2):
+        if (_angle_in_arc(angle1, start1, extent1) and
+                _angle_in_arc(angle2, start2, extent2)):
             results.append(point)
 
     return results
 
 
-def _angle_in_arc(angle: float, start: float, end: float) -> bool:
+def _angle_in_arc(angle: float, start: float, extent: float) -> bool:
     """
     Verifica si un ángulo está dentro del rango de un arco.
-    Maneja arcos que cruzan el límite de 0°/360°.
     
     Args:
         angle: Ángulo a verificar en grados
         start: Ángulo inicial del arco en grados
-        end: Ángulo final del arco en grados
+        extent: Extensión angular del arco en grados
     
     Returns:
         True si el ángulo está dentro del arco.
     """
-    # Normalizar todos los ángulos a [0, 360)
-    angle = angle % 360
-    start = start % 360
-    end = end % 360
+    # Normalizar el ángulo a [0, 360)
+    angle = angle % 360.0
+    start = start % 360.0
+    end = (start + extent) % 360.0
+
+    if extent >= 360.0 - EPS:
+        # Arco completo (círculo)
+        return True
 
     if start <= end:
         # Arco normal (no cruza 0°)
         return start - EPS <= angle <= end + EPS
     else:
-        # Arco que cruza 0° (ej: de 350° a 10°)
+        # Arco que cruza 0° (ej: start=350°, extent=20° → end=10°)
         return angle >= start - EPS or angle <= end + EPS
