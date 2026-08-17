@@ -2,6 +2,7 @@ import math
 import tkinter as tk
 
 from ..core import Point
+from .snap_markers import SnapMarkerDrawer, SNAP_MARKER_KINDS
 
 
 class CadCanvas(tk.Canvas):
@@ -25,11 +26,9 @@ class CadCanvas(tk.Canvas):
         self.select_dragging = False
         self.drag_threshold = 5
 
-        # Estado de grips
-        # self.grips = []
-        # self.grip_size = 8
-        # self.grip_dragging = False
-        # self.active_grip = None
+        # Estado visible snap
+        self.snap_drawer = SnapMarkerDrawer(self)
+        
         self.grip_manager = None
         # seguir el puntero del ratón.
         self.rubber_item = None
@@ -79,6 +78,7 @@ class CadCanvas(tk.Canvas):
 
     def redraw(self):
         self.delete("all")
+        self.snap_drawer.items = []
         self.rubber_item = None
         self.preview_circle_item = None
         self.item_to_entity = {}
@@ -572,6 +572,7 @@ class CadCanvas(tk.Canvas):
             self.app.console.entry.focus_set()
 
     def _on_motion(self, event):
+        self._update_snap_marker(event)
         # 1) Vista previa del hilo elástico (LINEA / POLILINEA)
         pts = getattr(self.app, "preview_points", None)
         if pts:
@@ -618,6 +619,7 @@ class CadCanvas(tk.Canvas):
         )
 
         self.app.manager.send_point(p, echo=False)
+        self.snap_drawer.clear()
 
         if hasattr(self, "console"):
             self.app.console.entry.focus_set()
@@ -704,6 +706,27 @@ class CadCanvas(tk.Canvas):
 
     def _on_pan_release(self, event):
         self.pan_last = None
+
+    # -----------------------------------
+    # SNAP MARKER
+    # -----------------------------------
+
+    def _update_snap_marker(self, event):
+        """Dibuja el marcador de snap bajo el cursor (solo si se espera punto)."""
+        if not self.app._command_waiting_for_point():
+            self.snap_drawer.clear()
+            return
+
+        raw = self.canvas_to_world(event.x, event.y)
+        base = self.app.manager.get_point_base()
+        p, kind = self.app.snap_point(raw, base_point=base)
+
+        if kind is not None and kind in SNAP_MARKER_KINDS:
+            x, y = self.world_to_canvas(p)
+            self.snap_drawer.draw(x, y, kind)
+        else:
+            self.snap_drawer.clear()
+
 
     # ---------------------------------
     # RECOGER IDENTITY CON EL RATON
