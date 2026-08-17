@@ -3,7 +3,7 @@ from typing import List, Optional, Tuple
 
 from .point import Point
 from .types import ALL_SNAP_MODES
-from ..geometry import line_line_intersection
+from ..geometry import line_line_intersection, projection_param
 
 
 class SnapEngine:
@@ -59,7 +59,8 @@ class SnapEngine:
             Point, snap_type
         
         snap_type puede ser:
-            "POINT", "ENDPOINT", "MIDPOINT", "INTERSECTION",
+            "POINT", "ENDPOINT", "MIDPOINT", "CENTER", "QUADRANT",
+            "INTERSECTION", "TANGENT", "PERPENDICULAR",
             "ORTHO", "GRID", None
         """
         if not self.snap_modes:
@@ -79,14 +80,37 @@ class SnapEngine:
             candidates.extend(
                 self._snap_midpoints_near(entities, p, ignore_entity_id, scale)
             )
+        if "CENTER" in self.snap_modes:
+            candidates.extend(self._snap_centers_near(entities, p, ignore_entity_id, scale)
+            )
+        if "QUADRANT" in self.snap_modes:
+            candidates.extend(self._snap_quadrants_near(entities, p, ignore_entity_id, scale)
+            )
         if "INTERSECTION" in self.snap_modes:
             candidates.extend(
                 self._snap_intersections_near(entities, p, ignore_entity_id, scale)
             )
 
+        # Snaps que necesitan punto base
+        if base_point is not None:
+            if "TANGENT" in self.snap_modes:
+                candidates.extend(self._snap_tangent_near(entities, p, base_point, ignore_entity_id, scale))
+            if "PERPENDICULAR" in self.snap_modes:
+                candidates.extend(self._snap_perpendicular_near(entities, p, base_point, ignore_entity_id, scale))
+
+
         best = self._nearest_snap_candidate(candidates, p, scale)
         if best is not None:
             return best
+
+        # NEAREST como respaldo (menor prioridad)
+        if "NEAREST" in self.snap_modes:
+            near = self._nearest_snap_candidate(
+                self._snap_nearest_near(entities, p, ignore_entity_id, scale), p, scale
+            )
+            if near is not None:
+                return near
+
 
         if "ORTHO" in self.snap_modes and base_point is not None:
             return self._apply_ortho(p, base_point), "ORTHO"
@@ -362,3 +386,136 @@ class SnapEngine:
         y_neg = Point(center.x - ry * y_cos, center.y - ry * y_sin)
 
         return [x_pos, x_neg, y_pos, y_neg]
+
+    # --------------------------------------------------------
+    # Nuevos snaps
+    # --------------------------------------------------------
+    def _snap_centers_near(self, entities, p, ignore_entity_id=None, scale=1.0):
+        tolerance = self.snap_tolerance_pixels / scale
+        candidates = []
+        for entity in entities:
+            if entity.id == ignore_entity_id:
+                continue
+            if entity.kind in ("circle", "arc", "ellipse"):
+                self._add_snap_candidate(candidates, entity.data["center"], p, tolerance, "CENTER")
+        return candidates
+
+    def _snap_quadrants_near(self, entities, p, ignore_entity_id=None, scale=1.0):
+        tolerance = self.snap_tolerance_pixels / scale
+        candidates = []
+        for entity in entities:
+            if entity.id == ignore_entity_id:
+                continue
+            if entity.kind == "circle":
+                c = entity.data["center"]; r = entity.data["radius"]
+                for ang in (0, 90, 180, 270):
+                    rad = math.radians(ang)
+                    self._add_snap_candidate(
+                        candidates, Point(c.x + r * math.cos(rad), c.y + r * math.sin(rad)),
+                        p, tolerance, "QUADRANT")
+            elif entity.kind == "ellipse":
+                c = entity.data["center"]
+                rx = float(entity.data["radius_x"]); ry = float(entity.data["radius_y"])
+                rot = math.radians(entity.data.get("rotation", 0.0))
+                cr, sr = math.cos(rot), math.sin(rot)
+                for ang in (0, 90, 180, 270):
+                    rad = math.radians(ang)
+                    lx, ly = rx * math.cos(rad), ry * math.sin(rad)
+                    self._add_snap_candidate(
+                        candidates, Point(c.x + lx * cr - ly * sr, c.y + lx * sr + ly * cr),
+                        p, tolerance, "QUADRANT")
+        return candidates
+
+    def _snap_tangent_near(self, entities, p, base_point, ignore_entity_id=None, scale=1.0):
+        tolerance = self.snap_tolerance_pixels / scale
+        candidates = []
+        for entity in entities:
+            if entity.id == ignore_entity_id:
+                continue
+            if entity.kind in ("circle", "arc"):
+                c = entity.data["center"]; r = entity.data["radius"]
+                for tp in self._circle_tangent_points(c, r, base_point):
+                    if entity.kind == "arc":
+                        ang = math.degrees(math.atan2(tp.y - c.y, tp.x - c.x))
+                        if not self._angle_in_arc(ang, entity.data["start_angle"], entity.data["extent"]):
+                            continue
+                    self._add_snap_candidate(candidates, tp, p, tolerance, "TANGENT")
+        return candidates
+
+    def _circle_tangent_points(self, center, radius, external):
+        dx = external.x - center.x; dy = external.y - center.y
+        d = math.hypot(dx, dy)
+        if d <= radius + 1e-9:
+            return []
+        base_ang = math.atan2(dy, dx)
+        alpha = math.asin(radius / d)
+        a1 = base_ang + (math.pi / 2 - alpha)
+        a2 = base_ang - (math.pi / 2 - alpha)
+        return [
+            Point(center.x + radius * math.cos(a1), center.y + radius * math.sin(a1)),
+            Point(center.x + radius * math.cos(a2), center.y + radius * math.sin(a2)),
+        ]
+
+    def _angle_in_arc(self, angle, start, extent):
+        angle %= 360.0; start %= 360.0
+        end = (start + extent) % 360.0
+        if extent >= 360.0 - 1e-9:
+            return True
+        if start <= end:
+            return start - 1e-9 <= angle <= end + 1e-9
+        return angle >= start - 1e-9 or angle <= end + 1e-9
+
+    def _snap_perpendicular_near(self, entities, p, base_point, ignore_entity_id=None, scale=1.0):
+        tolerance = self.snap_tolerance_pixels / scale
+        candidates = []
+        for entity in entities:
+            if entity.id == ignore_entity_id:
+                continue
+            segments = []
+            if entity.kind == "line":
+                segments = [(entity.data["start"], entity.data["end"])]
+            elif entity.kind in ("polyline", "polygon"):
+                pts = entity.data["points"]
+                n = len(pts) - 1 if entity.kind == "polyline" else len(pts)
+                segments = [(pts[i], pts[(i + 1) % len(pts)]) for i in range(n)]
+            for a, b in segments:
+                t = projection_param(base_point, a, b)
+                if -1e-9 <= t <= 1.0 + 1e-9:
+                    self._add_snap_candidate(
+                        candidates, Point(a.x + t * (b.x - a.x), a.y + t * (b.y - a.y)),
+                        p, tolerance, "PERPENDICULAR")
+        return candidates
+
+    def _snap_nearest_near(self, entities, p, ignore_entity_id=None, scale=1.0):
+        tolerance = self.snap_tolerance_pixels / scale
+        candidates = []
+        for entity in entities:
+            if entity.id == ignore_entity_id:
+                continue
+            if entity.kind == "line":
+                a = entity.data["start"]; b = entity.data["end"]
+                t = max(0.0, min(1.0, projection_param(p, a, b)))
+                self._add_snap_candidate(
+                    candidates, Point(a.x + t * (b.x - a.x), a.y + t * (b.y - a.y)),
+                    p, tolerance, "NEAREST")
+            elif entity.kind in ("polyline", "polygon"):
+                pts = entity.data["points"]
+                n = len(pts) - 1 if entity.kind == "polyline" else len(pts)
+                for i in range(n):
+                    a = pts[i]; b = pts[(i + 1) % len(pts)]
+                    t = max(0.0, min(1.0, projection_param(p, a, b)))
+                    self._add_snap_candidate(
+                        candidates, Point(a.x + t * (b.x - a.x), a.y + t * (b.y - a.y)),
+                        p, tolerance, "NEAREST")
+            elif entity.kind in ("circle", "arc"):
+                c = entity.data["center"]; r = entity.data["radius"]
+                dx = p.x - c.x; dy = p.y - c.y
+                d = math.hypot(dx, dy)
+                if d > 1e-9:
+                    ang = math.degrees(math.atan2(dy, dx))
+                    if entity.kind == "arc" and not self._angle_in_arc(ang, entity.data["start_angle"], entity.data["extent"]):
+                        continue
+                    self._add_snap_candidate(
+                        candidates, Point(c.x + r * dx / d, c.y + r * dy / d),
+                        p, tolerance, "NEAREST")
+        return candidates    

@@ -1,12 +1,17 @@
 EPS = 1e-9
 
 ALL_SNAP_MODES = [
-    "GRID",
     "POINT",
     "ENDPOINT",
     "MIDPOINT",
+    "CENTER",
+    "QUADRANT",
     "INTERSECTION",
+    "TANGENT",
+    "PERPENDICULAR",
+    "NEAREST",
     "ORTHO",
+    "GRID",
 ]
 
 TARGET_ALIASES = {

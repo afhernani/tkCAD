@@ -1,4 +1,4 @@
-import pytest
+import pytest, math
 
 from tkcad.core import Entity, Point, SnapEngine
 
@@ -104,3 +104,41 @@ def test_tolerancia_de_snap_se_ajusta_con_el_zoom():
     # ...pero con zoom 1 sí.
     p, kind = engine.snap_point(entities, Point(52.5, 50))
     assert kind == "ENDPOINT"
+
+def make_circle(entity_id, center, radius):
+    return Entity(id=entity_id, kind="circle",
+                  data={"center": center, "radius": radius})
+
+def test_snap_a_center():
+    engine = SnapEngine()
+    engine.snap_modes = {"CENTER"}
+    p, kind = engine.snap_point([make_circle(1, Point(10, 10), 5)], Point(10.3, 10.2))
+    assert p == Point(10, 10) and kind == "CENTER"
+
+def test_snap_a_quadrant():
+    engine = SnapEngine()
+    engine.snap_modes = {"QUADRANT"}
+    p, kind = engine.snap_point([make_circle(1, Point(0, 0), 10)], Point(10.2, 0.1))
+    assert p.x == pytest.approx(10.0) and p.y == pytest.approx(0.0) and kind == "QUADRANT"
+
+def test_snap_a_tangent():
+    engine = SnapEngine()
+    engine.snap_modes = {"TANGENT"}
+    p, kind = engine.snap_point([make_circle(1, Point(0, 0), 5)], Point(3.5, 4.0),
+                                base_point=Point(10, 0))
+    assert math.hypot(p.x, p.y) == pytest.approx(5.0) and kind == "TANGENT"
+
+def test_snap_a_perpendicular():
+    engine = SnapEngine()
+    engine.snap_modes = {"PERPENDICULAR"}
+    line = make_line(1, Point(0, 0), Point(10, 0))
+    p, kind = engine.snap_point([line], Point(5.1, 0.2), base_point=Point(5, 5))
+    assert p.x == pytest.approx(5.0) and p.y == pytest.approx(0.0) and kind == "PERPENDICULAR"
+
+def test_snap_a_nearest():
+    engine = SnapEngine()
+    engine.snap_modes = {"NEAREST"}
+    line = make_line(1, Point(0, 0), Point(10, 0))
+    p, kind = engine.snap_point([line], Point(5, 2))
+    assert p.x == pytest.approx(5.0) and p.y == pytest.approx(0.0) and kind == "NEAREST"
+
