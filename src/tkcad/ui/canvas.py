@@ -397,6 +397,128 @@ class CadCanvas(tk.Canvas):
                 x0, y0, x1, y1,
             )
 
+    def _select_by_window(self, x0, y0, x1, y1, action):
+        """
+        Selecciona entidades por ventana o cruce.
+        
+        Args:
+            x0, y0: Esquina superior-izquierda del rectángulo (canvas coords)
+            x1, y1: Esquina inferior-derecha del rectángulo (canvas coords)
+            action: "replace", "add", "remove"
+        """
+        # Convertir coordenadas de canvas a mundo
+        p0 = self.canvas_to_world(x0, y0)
+        p1 = self.canvas_to_world(x1, y1)
+        
+        # Asegurar que p0 sea el mínimo y p1 el máximo
+        min_x = min(p0.x, p1.x)
+        max_x = max(p0.x, p1.x)
+        min_y = min(p0.y, p1.y)
+        max_y = max(p0.y, p1.y)
+        
+        # Determinar el modo: izquierda→derecha = window, derecha→izquierda = crossing
+        mode = "window" if x1 >= x0 else "crossing"
+        
+        # Buscar entidades que califiquen
+        matching_ids = []
+        
+        for entity in self.app.entities:
+            bbox = self._get_entity_bbox(entity)
+            if bbox is None:
+                continue
+            
+            ent_min_x, ent_min_y, ent_max_x, ent_max_y = bbox
+            
+            if mode == "window":
+                # Window: toda la entidad debe estar dentro
+                if (ent_min_x >= min_x and ent_max_x <= max_x and
+                    ent_min_y >= min_y and ent_max_y <= max_y):
+                    matching_ids.append(entity.id)
+            else:
+                # Crossing: la entidad debe tocar el rectángulo
+                if (ent_max_x >= min_x and ent_min_x <= max_x and
+                    ent_max_y >= min_y and ent_min_y <= max_y):
+                    matching_ids.append(entity.id)
+        
+        # Aplicar la acción de selección
+        if action == "replace":
+            self.app.clear_selection()
+            for entity_id in matching_ids:
+                self.app.toggle_selection(entity_id)
+        elif action == "add":
+            for entity_id in matching_ids:
+                entity = self.app.get_entity_by_id(entity_id)
+                if entity and not entity.selected:
+                    self.app.toggle_selection(entity_id)
+        elif action == "remove":
+            for entity_id in matching_ids:
+                entity = self.app.get_entity_by_id(entity_id)
+                if entity and entity.selected:
+                    self.app.toggle_selection(entity_id)
+        
+        self.app.redraw()
+
+    def _get_entity_bbox(self, entity):
+        """
+        Calcula el bounding box de una entidad en coordenadas de mundo.
+        
+        Returns:
+            (min_x, min_y, max_x, max_y) o None si no se puede calcular
+        """
+        if entity.kind == "line":
+            start = entity.data["start"]
+            end = entity.data["end"]
+            return (
+                min(start.x, end.x),
+                min(start.y, end.y),
+                max(start.x, end.x),
+                max(start.y, end.y),
+            )
+        
+        elif entity.kind in ("polyline", "polygon"):
+            points = entity.data["points"]
+            if not points:
+                return None
+            xs = [p.x for p in points]
+            ys = [p.y for p in points]
+            return (min(xs), min(ys), max(xs), max(ys))
+        
+        elif entity.kind == "circle":
+            center = entity.data["center"]
+            radius = entity.data["radius"]
+            return (
+                center.x - radius,
+                center.y - radius,
+                center.x + radius,
+                center.y + radius,
+            )
+        
+        elif entity.kind == "arc":
+            center = entity.data["center"]
+            radius = entity.data["radius"]
+            # Para arcos, usamos el bounding box del círculo completo
+            # (simplificación; podría ser más preciso)
+            return (
+                center.x - radius,
+                center.y - radius,
+                center.x + radius,
+                center.y + radius,
+            )
+        
+        elif entity.kind == "ellipse":
+            center = entity.data["center"]
+            rx = float(entity.data["radius_x"])
+            ry = float(entity.data["radius_y"])
+            # Simplificación: bounding box axis-aligned
+            return (
+                center.x - rx,
+                center.y - ry,
+                center.x + rx,
+                center.y + ry,
+            )
+        
+        return None
+
     def _delete_selection_rect(self):
         if self.select_rect_item is not None:
             self.delete(self.select_rect_item)
