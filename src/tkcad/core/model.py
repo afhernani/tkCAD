@@ -1055,11 +1055,158 @@ class Document:
         if limit_kind == "arc" and target_kind == "line":
             return self.trim_line_by_arc(limit_id, target_id, keep_point)
 
+        # --- ARCO contra Línea / Círculo / Arco ---   ← NUEVO
+        if target_kind == "arc" and limit_kind in ("line", "circle", "arc"):
+            return self.trim_arc_by_entity(limit_id, target_id, keep_point)
+
         # --- Combinación no soportada ---
         return False, (
             f"RECORTAR no soporta {target_kind.upper()} "
             f"con límite {limit_kind.upper()}."
         )
+
+
+    def trim_arc_by_entity(self, limit_id: int, target_id: int, keep_point: Point):
+        """
+        Recorta un ARCO usando como límite una línea, círculo u otro arco.
+        
+        Args:
+            limit_id: ID de la entidad límite
+            target_id: ID del arco a recortar
+            keep_point: Punto que indica qué parte del arco conservar
+        
+        Returns:
+            (bool, str): (éxito, mensaje)
+        """
+        from ..geometry import (
+            line_arc_intersection,
+            circle_circle_intersection,
+            arc_arc_intersection,
+        )
+
+        limit = self.get_entity_by_id(limit_id)
+        target = self.get_entity_by_id(target_id)
+
+        if limit is None or target is None:
+            return False, "Entidad no encontrada."
+        if target.kind != "arc":
+            return False, "La entidad a recortar debe ser un arco."
+        if limit_id == target_id:
+            return False, "El límite y la entidad a recortar no pueden ser la misma."
+
+        center = target.data["center"]
+        radius = target.data["radius"]
+        start_angle = target.data["start_angle"]
+        extent = target.data["extent"]
+
+        # Calcular los puntos de corte según el tipo de límite
+        if limit.kind == "line":
+            hit_points = [
+                p for p, _ in line_arc_intersection(
+                    limit.data["start"], limit.data["end"],
+                    center, radius, start_angle, extent,
+                )
+            ]
+        elif limit.kind == "circle":
+            raw = circle_circle_intersection(
+                center, radius, limit.data["center"], limit.data["radius"]
+            )
+            hit_points = [
+                p for p in raw
+                if self._point_in_arc_range(p, center, start_angle, extent)
+            ]
+        elif limit.kind == "arc":
+            hit_points = arc_arc_intersection(
+                limit.data["center"], limit.data["radius"],
+                limit.data["start_angle"], limit.data["extent"],
+                center, radius, start_angle, extent,
+            )
+        else:
+            return False, (
+                f"RECORTAR no soporta límite {limit.kind.upper()} con arco."
+            )
+
+        if not hit_points:
+            return False, "El límite no intersecta el arco."
+
+        return self._trim_arc_at_points(
+            target, center, start_angle, extent, hit_points, keep_point
+        )
+
+
+    def _point_in_arc_range(self, p, center, start_angle, extent) -> bool:
+        """True si el ángulo de p (respecto al centro) cae dentro del arco."""
+        angle = math.degrees(math.atan2(p.y - center.y, p.x - center.x))
+        angle = angle % 360.0
+        start = start_angle % 360.0
+        end = (start + extent) % 360.0
+
+        if extent >= 360.0 - 1e-9:
+            return True
+        if start <= end:
+            return start - 1e-9 <= angle <= end + 1e-9
+        return angle >= start - 1e-9 or angle <= end + 1e-9
+
+
+    def _trim_arc_at_points(
+        self, target, center, start_angle, extent, hit_points, keep_point
+    ):
+        """
+        Aplica el recorte de un arco en los puntos de corte dados.
+        Modifica start_angle / extent según el lado a conservar.
+        """
+        # Parámetros angulares de los cortes (posición dentro del arco, 0..extent)
+        params = []
+        for p in hit_points:
+            angle = math.degrees(math.atan2(p.y - center.y, p.x - center.x))
+            s = (angle - start_angle) % 360.0
+            s = min(max(s, 0.0), extent)   # clamp por tolerancias
+            params.append(s)
+
+        params.sort()
+        # Eliminar duplicados (tangentes)
+        params = [
+            t for i, t in enumerate(params)
+            if i == 0 or t - params[i - 1] > 1e-6
+        ]
+
+        if not params:
+            return False, "Sin puntos de corte válidos."
+
+        # Parámetro del punto a conservar
+        phi = math.degrees(math.atan2(keep_point.y - center.y, keep_point.x - center.x))
+        s_keep = (phi - start_angle) % 360.0
+
+        if s_keep > extent:
+            # keep_point fuera del rango angular: elegir el lado más cercano
+            dist_before = 360.0 - s_keep   # distancia "antes del inicio"
+            dist_after = s_keep - extent   # distancia "después del final"
+            s_keep = 0.0 if dist_before < dist_after else extent
+
+        # Decidir qué tramo conservar
+        if len(params) == 1:
+            s1 = params[0]
+            if s_keep < s1:
+                new_start, new_extent = start_angle, s1
+            else:
+                new_start, new_extent = start_angle + s1, extent - s1
+        else:
+            s1, s2 = params[0], params[1]
+            if s_keep < s1:
+                new_start, new_extent = start_angle, s1
+            elif s_keep > s2:
+                new_start, new_extent = start_angle + s2, extent - s2
+            else:
+                new_start, new_extent = start_angle + s1, s2 - s1
+
+        if new_extent <= 1e-6:
+            return False, "El recorte eliminaría el arco por completo."
+
+        target.data["start_angle"] = new_start % 360.0
+        target.data["extent"] = new_extent
+
+        self.notify_change()
+        return True, "Arco recortado correctamente."
 
     # ----------------------------------------
     # ZOOM y PAN

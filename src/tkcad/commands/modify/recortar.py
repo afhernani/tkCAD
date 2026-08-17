@@ -8,7 +8,7 @@ from ...core import Command, CommandResult, parse_point
 VALID_LIMIT_KINDS = {"line", "circle", "arc"}
 
 # Tipos de entidad válidos como TARGET a recortar
-VALID_TARGET_KINDS = {"line"}
+VALID_TARGET_KINDS = {"line", "arc"}
 
 
 class TrimState(Enum):
@@ -33,7 +33,7 @@ class TrimCommand(Command):
 
         # ✏️ CAMBIO: mensaje actualizado con los tipos soportados
         ctx.write("RECORTAR soporta límites: LINEA, CIRCULO, ARCO.")
-        ctx.write("Entidad a recortar: LINEA.")
+        ctx.write("Entidad a recortar: LINEA, ARCO.")
         ctx.write("Usa LISTAR para ver los IDs de entidades.")
 
         ctx.prompt("ID de la entidad límite (o Enter para cancelar):")

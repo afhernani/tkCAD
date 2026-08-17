@@ -235,6 +235,68 @@ def test_trim_linea_no_intersecta_arco():
 
 
 # ============================================================
+# TRIM DE ARCO CON LÍNEA
+# ============================================================
+
+def test_trim_arco_con_linea_conserva_lado_izquierdo():
+    doc = Document()
+    doc.add_line(Point(0, -5), Point(0, 15))        # ← ahora cruza el arco en (0,10)
+    doc.add_entity("arc", {
+        "center": Point(0, 0), "radius": 10.0,
+        "start_angle": 0.0, "extent": 180.0,
+    })
+
+    ok, msg = doc.trim_by_entity(1, 2, Point(-8, 5))
+    assert ok, msg
+    e = doc.get_entity_by_id(2)
+    assert e.data["start_angle"] == pytest.approx(90.0, abs=1e-6)
+    assert e.data["extent"] == pytest.approx(90.0, abs=1e-6)
+
+
+def test_trim_arco_con_linea_conserva_lado_derecho():
+    doc = Document()
+    doc.add_line(Point(0, -5), Point(0, 15))        # ← ahora cruza el arco en (0,10)
+    doc.add_entity("arc", {
+        "center": Point(0, 0), "radius": 10.0,
+        "start_angle": 0.0, "extent": 180.0,
+    })
+
+    ok, msg = doc.trim_by_entity(1, 2, Point(8, 5))
+    assert ok, msg
+    e = doc.get_entity_by_id(2)
+    assert e.data["start_angle"] == pytest.approx(0.0, abs=1e-6)
+    assert e.data["extent"] == pytest.approx(90.0, abs=1e-6)
+
+
+def test_trim_arco_con_linea_dos_cortes_conserva_centro():
+    doc = Document()
+    doc.add_line(Point(-20, 5), Point(20, 5))        # id 1: corta en 30° y 150°
+    doc.add_entity("arc", {
+        "center": Point(0, 0), "radius": 10.0,
+        "start_angle": 0.0, "extent": 180.0,
+    })                                                # id 2
+
+    ok, msg = doc.trim_by_entity(1, 2, Point(0, 10))
+    assert ok, msg
+    e = doc.get_entity_by_id(2)
+    assert e.data["start_angle"] == pytest.approx(30.0, abs=1e-6)
+    assert e.data["extent"] == pytest.approx(120.0, abs=1e-6)
+
+
+def test_trim_arco_sin_interseccion_falla():
+    doc = Document()
+    doc.add_line(Point(0, 20), Point(0, 30))         # id 1: lejos del arco
+    doc.add_entity("arc", {
+        "center": Point(0, 0), "radius": 10.0,
+        "start_angle": 0.0, "extent": 180.0,
+    })                                                # id 2
+
+    ok, msg = doc.trim_by_entity(1, 2, Point(0, 10))
+    assert not ok
+    assert "no intersecta" in msg.lower()
+
+
+# ============================================================
 # DISPATCHER GENÉRICO
 # ============================================================
 
