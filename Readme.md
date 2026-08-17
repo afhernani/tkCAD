@@ -179,6 +179,23 @@ Prioridad: **snaps de objeto → ORTO → GRID**.
 
 Dentro de `SNAP`, escribir un **número** cambia el tamaño de la malla.
 
+## Snaps visuales
+
+## Resultado visual
+
+| Snap          | Símbolo     | Color       |
+| ------------- | ----------- | ----------- |
+| ENDPOINT      | □           | cian        |
+| MIDPOINT      | △           | verde       |
+| CENTER        | ○           | magenta     |
+| QUADRANT      | ◇           | amarillo    |
+| INTERSECTION  | ✕           | naranja     |
+| TANGENT       | ○ con línea | magenta     |
+| PERPENDICULAR | ⌐           | cian        |
+| NEAREST       | \|          | verde claro |
+
+
+
 ---
 
 ## 💾 Proyectos (JSON)
@@ -186,7 +203,6 @@ Dentro de `SNAP`, escribir un **número** cambia el tamaño de la malla.
 Los proyectos se guardan en JSON con este formato:
 
 ```json
-
   "version": 2,
   "next_entity_id": 1,
   "current_layer": "0",
@@ -420,9 +436,11 @@ ALL_COMMANDS = [
 ## 🧪 Testing
 
 La suite de tests protege los módulos del núcleo:
+
 ```bash
 pixi run test
 ```
+
 ----
 
 **Core del Sistema**
@@ -431,34 +449,34 @@ pixi run test
 
 **Módulo:** `tkcad.core.parser`
 
--  Parseo de números con coma y punto decimal
--  Coordenadas cartesianas absolutas (`10,20` y `10;20`)
--  Coordenadas relativas (`@5,-5`)
--  Coordenadas polares absolutas y relativas (`10<90`, `@10<45`)
--  Validación de entradas malformadas
+- Parseo de números con coma y punto decimal
+- Coordenadas cartesianas absolutas (`10,20` y `10;20`)
+- Coordenadas relativas (`@5,-5`)
+- Coordenadas polares absolutas y relativas (`10<90`, `@10<45`)
+- Validación de entradas malformadas
 
 #### `test_manager.py`
 
 **Módulo:** `tkcad.core.manager` (CommandLineManager)
 
--  Registro de comandos con nombres y alias
--  Ciclo de vida completo de comandos (start → input → finish)
--  Autocompletado por prefijo
--  Cancelación con ESC
--  Envío de puntos al comando activo
--  Limpieza de preview al terminar
--  Comandos instantáneos (terminan en `start()`)
+- Registro de comandos con nombres y alias
+- Ciclo de vida completo de comandos (start → input → finish)
+- Autocompletado por prefijo
+- Cancelación con ESC
+- Envío de puntos al comando activo
+- Limpieza de preview al terminar
+- Comandos instantáneos (terminan en `start()`)
 
 #### `test_history.py`
 
 **Módulo:** `tkcad.core.model` (Document - sistema de snapshots)
 
--  `undo()` revierte acciones
--  `redo()` reaplica acciones deshechas
--  Acciones sin mutaciones no generan historial
--  Nueva acción limpia el stack de redo
--  Undo/redo restaura estado de capas
--  Pila de undos sucesivos
+- `undo()` revierte acciones
+- `redo()` reaplica acciones deshechas
+- Acciones sin mutaciones no generan historial
+- Nueva acción limpia el stack de redo
+- Undo/redo restaura estado de capas
+- Pila de undos sucesivos
 
 ---
 
@@ -468,21 +486,21 @@ pixi run test
 
 **Módulo:** `tkcad.core.layer` + `tkcad.core.model`
 
--  Capa "0" existe por defecto
--  Nuevas entidades van a la capa actual
--  Validación de capas duplicadas o vacías
--  Protección contra borrar capa "0" o capa actual
--  Filtrado de entidades visibles por capa
--  Capas bloqueadas no se pueden seleccionar
--  Apagar capa deselecciona sus entidades
+- Capa "0" existe por defecto
+- Nuevas entidades van a la capa actual
+- Validación de capas duplicadas o vacías
+- Protección contra borrar capa "0" o capa actual
+- Filtrado de entidades visibles por capa
+- Capas bloqueadas no se pueden seleccionar
+- Apagar capa deselecciona sus entidades
 
 #### `test_project_layers.py`
 
 **Módulo:** `tkcad.core.project` (ProjectIO)
 
--  Round-trip save/load con capas
--  Preservación de propiedades de capa (color, visibilidad)
--  Migración automática de versión 1 a versión 2 (con capas)
+- Round-trip save/load con capas
+- Preservación de propiedades de capa (color, visibilidad)
+- Migración automática de versión 1 a versión 2 (con capas)
 
 ---
 
@@ -492,32 +510,32 @@ pixi run test
 
 **Módulo:** `tkcad.core.model` (Document)
 
--  Asignación de IDs secuenciales a entidades
--  Sistema de notificación de cambios
--  Selección básica (select_all, clear_selection, toggle_selection)
--  Borrado de entidades seleccionadas y por tipo
--  Búsqueda de entidades por ID
--  Cálculo de bounding box
+- Asignación de IDs secuenciales a entidades
+- Sistema de notificación de cambios
+- Selección básica (select_all, clear_selection, toggle_selection)
+- Borrado de entidades seleccionadas y por tipo
+- Búsqueda de entidades por ID
+- Cálculo de bounding box
 
 #### `test_model_transforms.py`
 
 **Módulo:** `tkcad.core.model` (Document - transformaciones)
 
--  `move_selected()` - traslación de entidades
--  `copy_selected()` - copia sin tocar original
--  `scale_selected()` - escalado desde punto base
--  `rotate_selected()` - rotación por ángulo
--  `mirror_selected()` - simetría respecto a eje
--  Validación de desplazamiento cero
+- `move_selected()` - traslación de entidades
+- `copy_selected()` - copia sin tocar original
+- `scale_selected()` - escalado desde punto base
+- `rotate_selected()` - rotación por ángulo
+- `mirror_selected()` - simetría respecto a eje
+- Validación de desplazamiento cero
 
 #### `test_model_editing.py`
 
 **Módulo:** `tkcad.core.model` (Document - edición geométrica)
 
--  `trim_line_by_line()` - recortar línea contra línea límite
--  `extend_line_to_line()` - extender línea hasta límite
--  Validación de intersecciones
--  Casos de error (sin intersección, ya cruza)
+- `trim_line_by_line()` - recortar línea contra línea límite
+- `extend_line_to_line()` - extender línea hasta límite
+- Validación de intersecciones
+- Casos de error (sin intersección, ya cruza)
 
 ---
 
@@ -527,9 +545,9 @@ pixi run test
 
 **Módulos:** `tkcad.commands.drawing.*`
 
--  **LINEA**: creación de segmentos, encadenamiento, punto relativo, opciones L/ángulo
--  **POLILINEA**: creación, cierre con "C", validación de puntos mínimos
--  **CIRCULO**: preview con centro y radio dinámico
+- **LINEA**: creación de segmentos, encadenamiento, punto relativo, opciones L/ángulo
+- **POLILINEA**: creación, cierre con "C", validación de puntos mínimos
+- **CIRCULO**: preview con centro y radio dinámico
 
 ---
 
@@ -539,31 +557,31 @@ pixi run test
 
 **Módulo:** `tkcad.geometry.intersection` + `tkcad.geometry.projection`
 
--  `line_line_intersection()` - intersección de dos líneas
--  Líneas paralelas (sin intersección)
--  `projection_param()` - proyección de punto sobre segmento
--  Casos degenerados (segmento de longitud cero)
+- `line_line_intersection()` - intersección de dos líneas
+- Líneas paralelas (sin intersección)
+- `projection_param()` - proyección de punto sobre segmento
+- Casos degenerados (segmento de longitud cero)
 
 #### `test_snapengine.py`
 
 **Módulo:** `tkcad.core.snapengine` (SnapEngine)
 
--  Snap a GRID (cuadrícula)
--  Snap a ENDPOINT (extremos)
--  Snap a MIDPOINT (puntos medios)
--  Snap a INTERSECTION (intersecciones)
--  Snap ORTHO (horizontal/vertical desde base)
--  Prioridad de snaps (ENDPOINT > GRID)
--  Toggle y configuración de modos
--  **Tolerancia adaptativa al zoom** (clave para zoom/pan)
+- Snap a GRID (cuadrícula)
+- Snap a ENDPOINT (extremos)
+- Snap a MIDPOINT (puntos medios)
+- Snap a INTERSECTION (intersecciones)
+- Snap ORTHO (horizontal/vertical desde base)
+- Prioridad de snaps (ENDPOINT > GRID)
+- Toggle y configuración de modos
+- **Tolerancia adaptativa al zoom** (clave para zoom/pan)
 
 #### `test_ortho.py`
 
 **Módulos:** `tkcad.commands.view.ortho` + `tkcad.commands.drawing.line`
 
--  Activación/desactivación del modo ORTHO
--  Forzado ortogonal en comando LINEA
--  Integración con SnapEngine
+- Activación/desactivación del modo ORTHO
+- Forzado ortogonal en comando LINEA
+- Integración con SnapEngine
 
 ---
 
@@ -573,28 +591,28 @@ pixi run test
 
 **Módulo:** `tkcad.commands.view.capa` (CapaCommand)
 
--  Crear y cambiar capa actual
--  ON/OFF de visibilidad
--  Cambio de color de capa
--  BLOQ/DESBLOQ (bloqueo)
--  Protección contra borrar capa "0" o capa actual
+- Crear y cambiar capa actual
+- ON/OFF de visibilidad
+- Cambio de color de capa
+- BLOQ/DESBLOQ (bloqueo)
+- Protección contra borrar capa "0" o capa actual
 
 ---
 
 ## Resumen de Cobertura
 
-| Área | Tests | Módulos Cubiertos |
-| --- | --- | --- |
-| **Parser** | 10  | `core.parser` |
-| **Manager** | 9   | `core.manager` |
-| **Historial** | 6   | `core.model` (undo/redo) |
-| **Capas** | 13  | `core.layer`, `core.model`, `core.project` |
-| **Documento** | 15  | `core.model` (CRUD, selección, transforms, editing) |
-| **Comandos Dibujo** | 12  | `commands.drawing.*` |
-| **Geometría** | 5   | `geometry.intersection`, `geometry.projection` |
-| **Snaps** | 9   | `core.snapengine` |
-| **ORTHO** | 2   | `commands.view.ortho`, `commands.drawing.line` |
-| **Configuración** | 5   | `commands.view.capa` |
+| Área                | Tests | Módulos Cubiertos                                   |
+| ------------------- | ----- | --------------------------------------------------- |
+| **Parser**          | 10    | `core.parser`                                       |
+| **Manager**         | 9     | `core.manager`                                      |
+| **Historial**       | 6     | `core.model` (undo/redo)                            |
+| **Capas**           | 13    | `core.layer`, `core.model`, `core.project`          |
+| **Documento**       | 15    | `core.model` (CRUD, selección, transforms, editing) |
+| **Comandos Dibujo** | 12    | `commands.drawing.*`                                |
+| **Geometría**       | 5     | `geometry.intersection`, `geometry.projection`      |
+| **Snaps**           | 9     | `core.snapengine`                                   |
+| **ORTHO**           | 2     | `commands.view.ortho`, `commands.drawing.line`      |
+| **Configuración**   | 5     | `commands.view.capa`                                |
 
 **Total: ~86 tests** cubriendo toda la arquitectura del núcleo (`core/`, `geometry/`, `commands/`) de forma independiente a Tkinter.
 
@@ -606,11 +624,11 @@ Este proyecto está licenciado bajo la **Licencia MIT** - una licencia de códig
 
 ### Resumen
 
--  Uso comercial
--  Modificación
--  Distribución
--  Uso privado
--  Debe incluir el aviso de copyright y licencia
+- Uso comercial
+- Modificación
+- Distribución
+- Uso privado
+- Debe incluir el aviso de copyright y licencia
 
 Para más detalles, consulta el archivo [LICENSE](LICENSE) en este repositorio.
 
@@ -622,56 +640,56 @@ Para más detalles, consulta el archivo [LICENSE](LICENSE) en este repositorio.
 
 ### 1. **Geometría y Edición**
 
-| Limitación | Evidencia en el código |
-| --- | --- |
-| `RECORTAR` y `EXTENDER` solo funcionan entre `LINEA` y límite `LINEA` | `test_model_editing.py` solo prueba `trim_line_by_line()` y `extend_line_to_line()` |
-| El snap `INTERSECCION` solo calcula intersecciones entre segmentos lineales | `test_snapengine.py` usa `make_line()` exclusivamente; `test_geometry.py` solo tiene `line_line_intersection()` |
-| `ESCALAR` es uniforme y solo con factor positivo | `test_model_transforms.py`: `scale_selected(Point(0,0), 2.0)` sin pruebas de factores negativos o escalado no uniforme |
-| Las elipses no participan en recortes ni intersecciones | No hay tests de trim/extend/intersection con `kind="ellipse"` |
-| No hay geometría para arcos en intersecciones | `intersection.py` solo tiene `line_line_intersection`, no hay `line_arc_intersection` ni `circle_circle_intersection` |
+| Limitación                                                                  | Evidencia en el código                                                                                                 |
+| --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `RECORTAR` y `EXTENDER` solo funcionan entre `LINEA` y límite `LINEA`       | `test_model_editing.py` solo prueba `trim_line_by_line()` y `extend_line_to_line()`                                    |
+| El snap `INTERSECCION` solo calcula intersecciones entre segmentos lineales | `test_snapengine.py` usa `make_line()` exclusivamente; `test_geometry.py` solo tiene `line_line_intersection()`        |
+| `ESCALAR` es uniforme y solo con factor positivo                            | `test_model_transforms.py`: `scale_selected(Point(0,0), 2.0)` sin pruebas de factores negativos o escalado no uniforme |
+| Las elipses no participan en recortes ni intersecciones                     | No hay tests de trim/extend/intersection con `kind="ellipse"`                                                          |
+| No hay geometría para arcos en intersecciones                               | `intersection.py` solo tiene `line_line_intersection`, no hay `line_arc_intersection` ni `circle_circle_intersection`  |
 
 ### 2. **Snaps y Precisión**
 
-| Limitación | Evidencia |
-| --- | --- |
-| No hay marcadores visuales de snap | No hay tests ni módulos relacionados con render de snap markers |
-| Solo 5 modos de snap: GRID, ENDPOINT, MIDPOINT, INTERSECTION, ORTHO | `test_snapengine.py` solo prueba estos 5 modos |
-| Faltan snaps: CENTER, QUADRANT, TANGENT, PERPENDICULAR, NEAREST | Ausencia total en tests y en `snapengine.py` |
+| Limitación                                                          | Evidencia                                                                                    |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| No hay marcadores visuales de snap                                  | No hay tests ni módulos relacionados con render de snap markers                              |
+| Solo 5 modos de snap: GRID, ENDPOINT, MIDPOINT, INTERSECTION, ORTHO | `test_snapengine.py` solo prueba estos 5 modos                                               |
+| Faltan snaps: CENTER, QUADRANT, TANGENT, PERPENDICULAR, NEAREST     | Ausencia total en tests y en `snapengine.py`                                                 |
 | La tolerancia de snap se ajusta al zoom pero no hay feedback visual | `test_snapengine.py`: `test_tolerancia_de_snap_se_ajusta_con_el_zoom()` pero sin UI asociada |
 
 ### 3. **Entidades y Dibujo**
 
-| Limitación | Evidencia |
-| --- | --- |
-| Solo 6 tipos de entidad: line, polyline, circle, arc, polygon, ellipse | `test_model.py` y estructura de `commands/drawing/` |
-| No hay soporte para texto, puntos, splines, hatch ni bloques | Ausencia en `commands/drawing/` y en los `kind` de entidades |
-| ARCO, POLIGONO y ELIPSE no tienen tests específicos de dibujo | `test_commands.py` solo prueba LINEA, POLILINEA y CIRCULO |
-| No hay edición de vértices individuales de polilíneas/polígonos | No hay tests de `add_vertex` o `remove_vertex` |
+| Limitación                                                             | Evidencia                                                    |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Solo 6 tipos de entidad: line, polyline, circle, arc, polygon, ellipse | `test_model.py` y estructura de `commands/drawing/`          |
+| No hay soporte para texto, puntos, splines, hatch ni bloques           | Ausencia en `commands/drawing/` y en los `kind` de entidades |
+| ARCO, POLIGONO y ELIPSE no tienen tests específicos de dibujo          | `test_commands.py` solo prueba LINEA, POLILINEA y CIRCULO    |
+| No hay edición de vértices individuales de polilíneas/polígonos        | No hay tests de `add_vertex` o `remove_vertex`               |
 
 ### 4. **Interfaz y UX**
 
-| Limitación | Evidencia |
-| --- | --- |
-| No hay barra de herramientas (toolbar) | Solo `ui/canvas.py`, `ui/console.py`, `ui/grips.py` |
-| No hay panel de propiedades ni panel de capas GUI | La gestión de capas es solo por consola (`commands/view/capa.py`) |
-| No hay barra de estado con coordenadas en tiempo real | Ausencia de `statusbar.py` en `ui/` |
-| Selección solo por ventana rectangular | No hay tests de selección por polígono, fence o cíclica |
+| Limitación                                            | Evidencia                                                         |
+| ----------------------------------------------------- | ----------------------------------------------------------------- |
+| No hay barra de herramientas (toolbar)                | Solo `ui/canvas.py`, `ui/console.py`, `ui/grips.py`               |
+| No hay panel de propiedades ni panel de capas GUI     | La gestión de capas es solo por consola (`commands/view/capa.py`) |
+| No hay barra de estado con coordenadas en tiempo real | Ausencia de `statusbar.py` en `ui/`                               |
+| Selección solo por ventana rectangular                | No hay tests de selección por polígono, fence o cíclica           |
 
 ### 5. **Archivos y Persistencia**
 
-| Limitación | Evidencia |
-| --- | --- |
-| Solo formato JSON propio | `core/project.py` solo tiene `ProjectIO` con JSON |
-| No hay exportación/importación DXF, SVG ni PNG | Ausencia de comandos `EXPORTAR`/`IMPORTAR` en `commands/file/` |
-| No hay control de cambios sin guardar (`modified`) | No hay tests de flag de modificación ni confirmación al salir |
-| No hay autoguardado | Ausencia total en tests y código |
+| Limitación                                         | Evidencia                                                      |
+| -------------------------------------------------- | -------------------------------------------------------------- |
+| Solo formato JSON propio                           | `core/project.py` solo tiene `ProjectIO` con JSON              |
+| No hay exportación/importación DXF, SVG ni PNG     | Ausencia de comandos `EXPORTAR`/`IMPORTAR` en `commands/file/` |
+| No hay control de cambios sin guardar (`modified`) | No hay tests de flag de modificación ni confirmación al salir  |
+| No hay autoguardado                                | Ausencia total en tests y código                               |
 
 ### 6. **Historial y Estado**
 
-| Limitación | Evidencia |
-| --- | --- |
-| El sistema de snapshots es completo pero no tiene límite de profundidad | `test_history.py` no prueba límites de memoria |
-| No hay agrupación de acciones complejas en un solo paso de undo | No hay tests de `begin_transaction()`/`end_transaction()` |
+| Limitación                                                              | Evidencia                                                 |
+| ----------------------------------------------------------------------- | --------------------------------------------------------- |
+| El sistema de snapshots es completo pero no tiene límite de profundidad | `test_history.py` no prueba límites de memoria            |
+| No hay agrupación de acciones complejas en un solo paso de undo         | No hay tests de `begin_transaction()`/`end_transaction()` |
 
 ---
 
