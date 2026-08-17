@@ -151,12 +151,13 @@ class CadCanvas(tk.Canvas):
                 radius = entity.data["radius"]
 
                 cx, cy = self.world_to_canvas(center)
+                r_px = self.world_to_canvas_length(radius)   # ← radio escalado
 
                 item = self.create_oval(
-                    cx - radius,
-                    cy - radius,
-                    cx + radius,
-                    cy + radius,
+                    cx - r_px,
+                    cy - r_px,
+                    cx + r_px,
+                    cy + r_px,
                     outline=color,
                     width=2,
                     tags=tag,
@@ -174,12 +175,13 @@ class CadCanvas(tk.Canvas):
                 extent = entity.data["extent"]
 
                 cx, cy = self.world_to_canvas(center)
+                r_px = self.world_to_canvas_length(radius)   # ← radio escalado
 
                 item = self.create_arc(
-                    cx - radius,
-                    cy - radius,
-                    cx + radius,
-                    cy + radius,
+                    cx - r_px,
+                    cy - r_px,
+                    cx + r_px,
+                    cy + r_px,
                     start=start_angle,
                     extent=extent,
                     style="arc",
