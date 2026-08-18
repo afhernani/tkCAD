@@ -33,6 +33,11 @@ class CadCanvas(tk.Canvas):
         self._cycle_last_pos = None
         self._cycle_candidates = []
         self._cycle_index = 0
+
+        # historial + zoom a rect
+        self.view_back = []
+        self.view_forward = []
+        self._last_view_key = None
         
         self.grip_manager = None
         # seguir el puntero del ratón.
@@ -712,6 +717,7 @@ class CadCanvas(tk.Canvas):
         self.zoom_at(self.winfo_width() / 2, self.winfo_height() / 2, factor)
 
     def zoom_extents(self):
+        self._push_view("ext")
         bbox = self.app.bounding_box()
         if bbox is None:
             return
@@ -728,11 +734,14 @@ class CadCanvas(tk.Canvas):
         self.redraw()
 
     def _on_wheel(self, event):
+        self._push_view("wheel")
         factor = 1.1 if event.delta > 0 else 1 / 1.1
         self.zoom_at(event.x, event.y, factor)
 
     def _on_pan_press(self, event):
+        self._push_view("pan")
         self.pan_last = (event.x, event.y)
+        self.config(cursor="fleur")
 
     def _on_pan_motion(self, event):
         if self.pan_last is None:
@@ -746,6 +755,45 @@ class CadCanvas(tk.Canvas):
 
     def _on_pan_release(self, event):
         self.pan_last = None
+
+    # historial + zoom a rect
+
+    def _push_view(self, key=None):
+        """Guarda la vista actual en el historial (agrupa ráfagas iguales)."""
+        if key is None or self._last_view_key != key:
+            self.view_back.append((self.scale, self.pan_x, self.pan_y))
+            if len(self.view_back) > 50:
+                self.view_back.pop(0)
+            self.view_forward.clear()
+        self._last_view_key = key
+
+    def zoom_to_world_rect(self, min_x, min_y, max_x, max_y):
+        from ..core import fit_rect_to_view
+        self._push_view("rect")
+        self.scale, self.pan_x, self.pan_y = fit_rect_to_view(
+            min_x, min_y, max_x, max_y,
+            self.winfo_width(), self.winfo_height(), self.margin,
+        )
+        self._last_view_key = None
+        self.redraw()
+
+    def zoom_previous(self):
+        if not self.view_back:
+            return False
+        self.view_forward.append((self.scale, self.pan_x, self.pan_y))
+        self.scale, self.pan_x, self.pan_y = self.view_back.pop()
+        self._last_view_key = None
+        self.redraw()
+        return True
+
+    def zoom_next(self):
+        if not self.view_forward:
+            return False
+        self.view_back.append((self.scale, self.pan_x, self.pan_y))
+        self.scale, self.pan_x, self.pan_y = self.view_forward.pop()
+        self._last_view_key = None
+        self.redraw()
+        return True
 
     # -----------------------------------
     # SNAP MARKER

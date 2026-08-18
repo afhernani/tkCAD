@@ -39,6 +39,7 @@ from .view.capa import CapaCommand
 from .view.zoom import ZoomCommand
 from .view.ortho import OrthoCommand
 from .view.seleccion_poligono import SeleccionPoligonoCommand
+from .view.zoom_avanzado import ZoomPrevioCommand, ZoomSiguienteCommand, ZoomVentanaCommand
 
 # System
 from .system.ayuda import HelpCommand
@@ -79,6 +80,9 @@ ALL_COMMANDS: List[Type[Command]] = [
     ZoomCommand,
     OrthoCommand,
     SeleccionPoligonoCommand,
+    ZoomPrevioCommand, 
+    ZoomSiguienteCommand, 
+    ZoomVentanaCommand,
     # System
     HelpCommand,
     ExitCommand,

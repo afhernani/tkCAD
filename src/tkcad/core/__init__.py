@@ -9,6 +9,7 @@ from .snapengine import SnapEngine
 from .project import ProjectIO
 from .model import Document
 from .layer import Layer
+from .viewfit import fit_rect_to_view
 
 # (Opcional) definir qué se exporta con "from tkcad.core import *"
 __all__ = [
@@ -18,5 +19,5 @@ __all__ = [
     "CommandResult", "Command",
     "parse_number", "parse_point",
     "CommandLineManager", "SnapEngine", "ProjectIO", "Document",
-    "Layer"
+    "Layer", "fit_rect_to_view"
 ]

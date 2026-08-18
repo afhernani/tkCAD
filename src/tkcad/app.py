@@ -330,6 +330,15 @@ class CadApp(Document):
     def zoom_extents(self):
         self.canvas.zoom_extents()
 
+    def zoom_to_world_rect(self, min_x, min_y, max_x, max_y):
+        self.canvas.zoom_to_world_rect(min_x, min_y, max_x, max_y)
+
+    def zoom_previous(self):
+        return self.canvas.zoom_previous()
+
+    def zoom_next(self):
+        return self.canvas.zoom_next()
+
     # métodos para configurar los snaps
     def get_snap_modes(self):
         return sorted(self.snap_modes)
