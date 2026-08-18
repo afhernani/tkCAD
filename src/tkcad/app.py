@@ -486,35 +486,6 @@ class CadApp(Document):
 
         return _export(self.entities, path)
 
-    # --------------------------------
-    # LAYER PANEL
-    # --------------------------------
-
-    def toggle_layer_visible(self, name):
-        layer = self.get_layer(name)
-        if layer is None:
-            return
-        layer.visible = not layer.visible
-        if not layer.visible:
-            for e in self.entities:               # al apagar, deselecciona
-                if e.layer == name and e.selected:
-                    e.selected = False
-        self.notify_change()
-
-    def toggle_layer_locked(self, name):
-        layer = self.get_layer(name)
-        if layer is None:
-            return
-        layer.locked = not layer.locked
-        self.notify_change()
-
-    def set_layer_color(self, name, color):
-        layer = self.get_layer(name)
-        if layer is None:
-            return
-        layer.color = color
-        self.notify_change()
-
 
 # ============================================================
 # Ejecución

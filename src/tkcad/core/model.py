@@ -1553,3 +1553,35 @@ class Document:
         del points[index]
         self.notify_change()
         return True, "Vértice eliminado."
+
+    # --------------------------------
+    # LAYER PANEL
+    # --------------------------------
+
+    def toggle_layer_visible(self, name:str)-> bool:
+        layer = self.get_layer(name)
+        if layer is None:
+            return False
+        layer.visible = not layer.visible
+        if not layer.visible:
+            for e in self.entities:               # al apagar, deselecciona
+                if e.layer == name and e.selected:
+                    e.selected = False
+        self.notify_change()
+        return True
+
+    def toggle_layer_locked(self, name:str)-> bool:
+        layer = self.get_layer(name)
+        if layer is None:
+            return False
+        layer.locked = not layer.locked
+        self.notify_change()
+        return True
+
+    def set_layer_color(self, name: str, color: str) -> bool:
+        layer = self.get_layer(name)
+        if layer is None:
+            return False
+        layer.color = color
+        self.notify_change()
+        return True
