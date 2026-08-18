@@ -444,6 +444,32 @@ class CadApp(Document):
             current_layer=self.current_layer,
         ) 
 
+    # ---------------------------------------------
+    # export_dxf
+    # ---------------------------------------------
+
+    def export_dxf(self, filepath=None):
+        """Exporta las entidades actuales a DXF (diálogo si no hay ruta)."""
+        from .core.dxf_export import export_dxf as _export
+
+        if filepath is None:
+            selected = filedialog.asksaveasfilename(
+                parent=self.root,
+                title="Exportar DXF",
+                defaultextension=".dxf",
+                filetypes=[("AutoCAD DXF", "*.dxf"), ("Todos", "*.*")],
+            )
+            if not selected:
+                return False, "Exportación cancelada."
+            path = Path(selected)
+        else:
+            path = Path(filepath).expanduser()
+
+        if path.suffix.lower() != ".dxf":
+            path = path.with_suffix(".dxf")
+
+        return _export(self.entities, path)
+
   
 # ============================================================
 # Ejecución

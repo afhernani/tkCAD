@@ -30,6 +30,7 @@ from .modify.extender import ExtendCommand
 from .file.guardar import SaveCommand, SaveAsCommand
 from .file.abrir import OpenCommand
 from .file.nuevo import NewCommand
+from .file.exportar import ExportCommand
 
 # View
 from .view.seleccion import SelectCommand, ListCommand
@@ -67,6 +68,7 @@ ALL_COMMANDS: List[Type[Command]] = [
     SaveAsCommand,
     OpenCommand,
     NewCommand,
+    ExportCommand,
     # View
     SelectCommand,
     ListCommand,
