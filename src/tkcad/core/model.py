@@ -1585,3 +1585,88 @@ class Document:
         layer.color = color
         self.notify_change()
         return True
+
+    # -----------------------------------
+    # LEER Y EDITAR PROPIEDADES
+    # -----------------------------------
+
+    def get_entity_properties(self, entity_id: int):
+        """Devuelve [(campo, valor_mostrable)] de una entidad."""
+        entity = self.get_entity_by_id(entity_id)
+        if entity is None:
+            return []
+
+        def pt(p):
+            return f"{p.x:g}, {p.y:g}"
+
+        d = entity.data
+        props = [("id", entity.id), ("tipo", entity.kind), ("capa", entity.layer)]
+
+        if entity.kind == "line":
+            props += [("start", pt(d["start"])), ("end", pt(d["end"]))]
+        elif entity.kind in ("polyline", "polygon"):
+            props += [("vértices", len(d["points"]))]
+        elif entity.kind == "circle":
+            props += [("center", pt(d["center"])), ("radius", round(d["radius"], 3))]
+        elif entity.kind == "arc":
+            props += [
+                ("center", pt(d["center"])), ("radius", round(d["radius"], 3)),
+                ("start_angle", round(d["start_angle"], 2)), ("extent", round(d["extent"], 2)),
+            ]
+        elif entity.kind == "ellipse":
+            props += [
+                ("center", pt(d["center"])), ("radius_x", round(d["radius_x"], 3)),
+                ("radius_y", round(d["radius_y"], 3)), ("rotation", round(d.get("rotation", 0), 2)),
+            ]
+        elif entity.kind == "text":
+            props += [
+                ("position", pt(d["position"])), ("height", round(d["height"], 3)),
+                ("content", d["content"]),
+            ]
+        return props
+
+
+    def set_entity_property(self, entity_id: int, field: str, value):
+        """Edita un campo de una entidad. Returns (bool, str)."""
+        from . import parse_point, parse_number    # evita importacion circular
+        
+        entity = self.get_entity_by_id(entity_id)
+        if entity is None:
+            return False, "Entidad no encontrada."
+
+        if field == "capa":
+            if self.get_layer(str(value)) is None:
+                return False, f"Capa inexistente: {value}"
+            entity.layer = str(value)
+            self.notify_change()
+            return True, "OK"
+
+        data = entity.data
+        if field not in data:
+            return False, f"Campo no editable: {field}"
+
+        current = data[field]
+
+        if isinstance(current, Point):
+            try:
+                data[field] = parse_point(str(value), None)
+            except ValueError:
+                return False, "Punto no válido (usa x,y)."
+
+        elif isinstance(current, float):
+            try:
+                num = parse_number(str(value))
+            except ValueError:
+                return False, "Número no válido."
+            if field in ("radius", "height", "radius_x", "radius_y") and num <= 0:
+                return False, "Debe ser mayor que cero."
+            data[field] = float(num)
+
+        elif isinstance(current, str):
+            data[field] = str(value)
+
+        else:
+            return False, f"Campo no editable: {field}"
+
+        self.notify_change()
+        return True, "OK"    

@@ -9,6 +9,7 @@ from .ui.console import ConsoleWidget
 from .ui.canvas import CadCanvas
 from .ui.grips import GripManager
 from .ui.layer_panel import LayerPanel
+from .ui.properties_panel import PropertiesPanel
 from pathlib import Path
 from tkinter import filedialog
 
@@ -26,8 +27,10 @@ class CadApp(Document):
         root.protocol("WM_DELETE_WINDOW", self._close_window)
 
         self.root.bind("<F2>", lambda e: self.toggle_layer_panel())
+        self.root.bind("<F3>", lambda e: self.toggle_properties_panel())
         # --- estado del panel ---
         self._panel_visible = True
+        self._props_visible = True
 
         # self.entities = []
         # self.next_entity_id = 1
@@ -63,6 +66,7 @@ class CadApp(Document):
         register_all(self.manager)
 
         self.layer_panel = LayerPanel(self.root, self) # contenedor principal
+        self.properties_panel = PropertiesPanel(root, self)
         # -- Orden de empaquetado
         # self.layer_panel.pack(side="right", fill="y") # ajusta a tu Layout (pack/grid)
         # self.console.pack(side="bottom", fill="x")
@@ -79,11 +83,14 @@ class CadApp(Document):
     def _apply_layout(self):
         """(Re)empaqueta los widgets en el orden correcto."""
         # Deshacer el empaquetado actual
+        self.properties_panel.pack_forget()
         self.layer_panel.pack_forget()
         self.console.pack_forget()
         self.canvas.pack_forget()
 
         # Re-empaquetar en orden: panel derecha → consola abajo → canvas arriba
+        if self._props_visible:
+            self.properties_panel.pack(side="left", fill="y")
         if self._panel_visible:
             self.layer_panel.pack(side="right", fill="y")
         self.console.pack(side="bottom", fill="x")
@@ -95,6 +102,11 @@ class CadApp(Document):
         self._panel_visible = not self._panel_visible
         self._apply_layout()
         return self._panel_visible
+
+    def toggle_properties_panel(self) -> bool:
+        self._props_visible = not self._props_visible
+        self._apply_layout()
+        return self._props_visible
 
     def _process_command(self, text: str):
         self.manager.process_input(text)
@@ -339,6 +351,9 @@ class CadApp(Document):
     # --------------------------------------------------------
 
     def redraw(self):
+        if hasattr(self, "properties_panel"):
+            self.properties_panel.refresh()
+        
         if hasattr(self, "layer_panel"):
             self.layer_panel.refresh()
         self.canvas.redraw()
