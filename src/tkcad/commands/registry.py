@@ -41,6 +41,7 @@ from .view.zoom import ZoomCommand
 from .view.ortho import OrthoCommand
 from .view.seleccion_poligono import SeleccionPoligonoCommand
 from .view.zoom_avanzado import ZoomPrevioCommand, ZoomSiguienteCommand, ZoomVentanaCommand
+from .view.panel_capas import PanelCapasCommand
 
 # System
 from .system.ayuda import HelpCommand
@@ -85,6 +86,7 @@ ALL_COMMANDS: List[Type[Command]] = [
     ZoomPrevioCommand, 
     ZoomSiguienteCommand, 
     ZoomVentanaCommand,
+    PanelCapasCommand,
     # System
     HelpCommand,
     ExitCommand,

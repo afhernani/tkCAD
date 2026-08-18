@@ -24,7 +24,11 @@ class CadApp(Document):
         root.title("Editor con ventana de comandos")
         root.geometry("900x600")
         root.protocol("WM_DELETE_WINDOW", self._close_window)
-        
+
+        self.root.bind("<F2>", lambda e: self.toggle_layer_panel())
+        # --- estado del panel ---
+        self._panel_visible = True
+
         # self.entities = []
         # self.next_entity_id = 1
         self.current_file = None
@@ -60,15 +64,37 @@ class CadApp(Document):
 
         self.layer_panel = LayerPanel(self.root, self) # contenedor principal
         # -- Orden de empaquetado
-        self.layer_panel.pack(side="right", fill="y") # ajusta a tu Layout (pack/grid)
-        self.console.pack(side="bottom", fill="x")
-        self.canvas.pack(side="top", fill="both", expand=True)
+        # self.layer_panel.pack(side="right", fill="y") # ajusta a tu Layout (pack/grid)
+        # self.console.pack(side="bottom", fill="x")
+        # self.canvas.pack(side="top", fill="both", expand=True)
+        # Layout inicial
+        self._apply_layout()
 
         self.project_io = ProjectIO()
 
         self.write("Editor iniciado.")
         self.write("Escribe AYUDA o pulsa Tab para ver los comandos disponibles.")
         self.prompt("Comando:")
+
+    def _apply_layout(self):
+        """(Re)empaqueta los widgets en el orden correcto."""
+        # Deshacer el empaquetado actual
+        self.layer_panel.pack_forget()
+        self.console.pack_forget()
+        self.canvas.pack_forget()
+
+        # Re-empaquetar en orden: panel derecha → consola abajo → canvas arriba
+        if self._panel_visible:
+            self.layer_panel.pack(side="right", fill="y")
+        self.console.pack(side="bottom", fill="x")
+        self.canvas.pack(side="top", fill="both", expand=True)
+
+
+    def toggle_layer_panel(self) -> bool:
+        """Muestra/oculta el panel de capas. Devuelve el nuevo estado."""
+        self._panel_visible = not self._panel_visible
+        self._apply_layout()
+        return self._panel_visible
 
     def _process_command(self, text: str):
         self.manager.process_input(text)
