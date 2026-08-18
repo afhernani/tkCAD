@@ -448,6 +448,21 @@ class CadCanvas(tk.Canvas):
 
     
     def _on_select_press(self, event):
+        # NUEVO: Ctrl+clic sobre un grip de vértice elimina ese vértice
+        if event.state & 0x0004:   # Ctrl presionado
+            grip = self.grip_manager.get_grip_at(event.x, event.y)
+            if grip is not None and grip["type"] == "vertex":
+                entity = self.app.get_entity_by_id(grip["entity_id"])
+                if entity is not None and entity.kind in ("polyline", "polygon"):
+                    self.app.mark_action()
+                    ok, msg = self.app.remove_vertex(grip["entity_id"], grip["index"])
+                    self.app.commit_action()
+                    self.app.write(msg)
+                    self.app.redraw()
+                    if hasattr(self, "console"):
+                        self.app.console.entry.focus_set()
+                    return
+        
         # Si un comando está esperando punto, el clic introduce un punto.
         if self.app._command_waiting_for_point():
             self._handle_point_click(event)
@@ -504,6 +519,9 @@ class CadCanvas(tk.Canvas):
     def _on_select_release(self, event):
         # Si estábamos arrastrando un grip, terminamos la edición.
         if self.grip_manager.grip_dragging:
+            # NUEVO: notificar que se soltó un grip (limpia flags internos)
+            self.grip_manager.on_grip_released()
+
             self.grip_manager.grip_dragging = False
             self.grip_manager.active_grip = None
             self.app.commit_action()

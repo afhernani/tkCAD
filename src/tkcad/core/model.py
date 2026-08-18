@@ -1455,3 +1455,66 @@ class Document:
                     count += 1
 
         return count
+
+
+    # --------------------------------------------
+    # AÑADIR / BORRAR VERTICES
+    # --------------------------------------------
+
+    def add_vertex(self, entity_id: int, index: int, point: Point):
+        """
+        Inserta un vértice en el segmento `index` (entre points[index] y
+        points[index+1]) de una polilínea o polígono.
+        
+        Args:
+            entity_id: ID de la entidad
+            index: Índice del segmento (0 = entre points[0] y points[1])
+            point: Coordenadas del nuevo vértice
+        
+        Returns:
+            (bool, str): (éxito, mensaje)
+        """
+        entity = self.get_entity_by_id(entity_id)
+        if entity is None:
+            return False, "Entidad no encontrada."
+        if entity.kind not in ("polyline", "polygon"):
+            return False, "Solo polilíneas y polígonos tienen vértices."
+
+        points = entity.data["points"]
+        if index < 0 or index >= len(points):
+            return False, "Índice de segmento fuera de rango."
+
+        points.insert(index + 1, point)
+        self.notify_change()
+        return True, "Vértice añadido."
+
+
+    def remove_vertex(self, entity_id: int, index: int):
+        """
+        Elimina el vértice `index` de una polilínea o polígono.
+        Respeta el mínimo de puntos (2 polilínea, 3 polígono).
+        
+        Args:
+            entity_id: ID de la entidad
+            index: Índice del vértice a eliminar
+        
+        Returns:
+            (bool, str): (éxito, mensaje)
+        """
+        entity = self.get_entity_by_id(entity_id)
+        if entity is None:
+            return False, "Entidad no encontrada."
+        if entity.kind not in ("polyline", "polygon"):
+            return False, "Solo polilíneas y polígonos tienen vértices."
+
+        points = entity.data["points"]
+        min_points = 3 if entity.kind == "polygon" else 2
+
+        if len(points) <= min_points:
+            return False, f"Un {entity.kind} necesita al menos {min_points} vértices."
+        if index < 0 or index >= len(points):
+            return False, "Índice de vértice fuera de rango."
+
+        del points[index]
+        self.notify_change()
+        return True, "Vértice eliminado."

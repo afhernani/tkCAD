@@ -61,6 +61,15 @@ class GripManager:
                         index=index,
                     )
 
+                # NUEVO: grips de punto medio (verdes) para añadir vértices
+                n_segments = len(points) - 1 if entity.kind == "polyline" else len(points)
+                for i in range(n_segments):
+                    a = points[i]
+                    b = points[(i + 1) % len(points)]
+                    mid = Point((a.x + b.x) / 2, (a.y + b.y) / 2)
+                    mx, my = self.canvas.world_to_canvas(mid)
+                    self.create_mid_grip(mx, my, entity.id, i)
+
             # ----------------------------------------------------
             # Círculo: grip de centro y grip de radio
             # ----------------------------------------------------
@@ -151,6 +160,29 @@ class GripManager:
                     "ellipse_y",
                 )
 
+    def create_mid_grip(self, x: float, y: float, entity_id: int, segment_index: int):
+        """Crea un grip verde en el punto medio de un segmento.
+        
+        Al arrastrarlo, se inserta un vértice nuevo entre los dos vértices del segmento.
+        """
+        s = self.grip_size / 2    # mitad del tamaño de un grip normal
+        item = self.canvas.create_rectangle(
+            x - s / 2,
+            y - s / 2,
+            x + s / 2,
+            y + s / 2,
+            fill="#00ff88",       # verde claro (distintivo)
+            outline="#004422",
+        )
+        self.grips.append({
+            "item": item,
+            "entity_id": entity_id,
+            "type": "midpoint",   # tipo nuevo
+            "index": segment_index,
+            "x": x,
+            "y": y,
+        })
+
     def create_grip(self, x: float, y: float, entity_id: int, grip_type: str, index=None):
         s = self.grip_size
 
@@ -234,8 +266,24 @@ class GripManager:
             if index is not None:
                 points = entity.data["points"]
 
-                if 0 <= index < len(points):
-                    points[index] = p
+                # if 0 <= index < len(points):
+                #     points[index] = p
+                if grip["type"] == "vertex":
+                    # Mover vértice existente (comportamiento actual)
+                    if 0 <= index < len(points):
+                        points[index] = p
+                        
+                elif grip["type"] == "midpoint":
+                    # NUEVO: insertar vértice en el segmento `index`
+                    # Al arrastrar, el punto sigue al cursor; al soltar queda insertado
+                    if 0 <= index <= len(points):
+                        # Si ya hay un vértice insertado en este segmento (del arrastre),
+                        # reemplazarlo en lugar de insertar otro
+                        if len(points) > index + 1 and hasattr(entity, "_mid_grip_inserted"):
+                            points[index + 1] = p
+                        else:
+                            points.insert(index + 1, p)
+                            entity._mid_grip_inserted = True
 
         # ----------------------------------------------------
         # Círculo
@@ -382,3 +430,10 @@ class GripManager:
                 return entity.data["center"]
 
         return None
+
+    def on_grip_released(self):
+        """Limpia el flag de inserción tras soltar un grip midpoint."""
+        if self.active_grip is not None and self.active_grip.get("type") == "midpoint":
+            entity = self.app.get_entity_by_id(self.active_grip["entity_id"])
+            if entity is not None and hasattr(entity, "_mid_grip_inserted"):
+                delattr(entity, "_mid_grip_inserted")
