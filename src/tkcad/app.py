@@ -8,6 +8,7 @@ from .commands.registry import register_all
 from .ui.console import ConsoleWidget
 from .ui.canvas import CadCanvas
 from .ui.grips import GripManager
+from .ui.layer_panel import LayerPanel
 from pathlib import Path
 from tkinter import filedialog
 
@@ -46,18 +47,22 @@ class CadApp(Document):
         self.grip_manager = GripManager(self.canvas, self)
         self.canvas.grip_manager = self.grip_manager
         self.canvas.app = self
-        self.canvas.pack(fill="both", expand=True)
         self.canvas.bind("<Configure>", lambda e: self.canvas.redraw())
 
         # Consola
         self.console = ConsoleWidget(root, on_command=self._process_command)
-        self.console.pack(fill="x")
 
         # Gestor de comandos
         self.manager = CommandLineManager(self)
         self.console.set_completion_callback(self.manager.get_completions)
         # self.manager.register(LineCommand) asi para todos o como sigue a continuacion
         register_all(self.manager)
+
+        self.layer_panel = LayerPanel(self.root, self) # contenedor principal
+        # -- Orden de empaquetado
+        self.layer_panel.pack(side="right", fill="y") # ajusta a tu Layout (pack/grid)
+        self.console.pack(side="bottom", fill="x")
+        self.canvas.pack(side="top", fill="both", expand=True)
 
         self.project_io = ProjectIO()
 
@@ -308,6 +313,8 @@ class CadApp(Document):
     # --------------------------------------------------------
 
     def redraw(self):
+        if hasattr(self, "layer_panel"):
+            self.layer_panel.refresh()
         self.canvas.redraw()
 
     def notify_change(self):
@@ -479,7 +486,36 @@ class CadApp(Document):
 
         return _export(self.entities, path)
 
-  
+    # --------------------------------
+    # LAYER PANEL
+    # --------------------------------
+
+    def toggle_layer_visible(self, name):
+        layer = self.get_layer(name)
+        if layer is None:
+            return
+        layer.visible = not layer.visible
+        if not layer.visible:
+            for e in self.entities:               # al apagar, deselecciona
+                if e.layer == name and e.selected:
+                    e.selected = False
+        self.notify_change()
+
+    def toggle_layer_locked(self, name):
+        layer = self.get_layer(name)
+        if layer is None:
+            return
+        layer.locked = not layer.locked
+        self.notify_change()
+
+    def set_layer_color(self, name, color):
+        layer = self.get_layer(name)
+        if layer is None:
+            return
+        layer.color = color
+        self.notify_change()
+
+
 # ============================================================
 # Ejecución
 # ============================================================
