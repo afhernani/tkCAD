@@ -43,9 +43,13 @@ class SaveCommand(Command):
 
         ok, message = ctx.save_project(filepath)
 
+        if ok:
+            ctx.mark_saved()
         ctx.write(message)
 
         return CommandResult.FINISHED
+
+
 
 class SaveAsCommand(Command):
     name = "GUARDARCOMO"
@@ -81,6 +85,8 @@ class SaveAsCommand(Command):
             force_dialog=True,
         )
 
+        if ok:
+            ctx.mark_saved()
         ctx.write(message)
 
         return CommandResult.FINISHED

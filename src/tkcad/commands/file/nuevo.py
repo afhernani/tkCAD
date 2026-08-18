@@ -30,6 +30,7 @@ class NewCommand(Command):
         # Si no hay entidades, creamos proyecto nuevo directamente
         if not ctx.entities:
             ctx.new_project()
+            ctx.mark_saved()
             ctx.write("Proyecto nuevo creado.")
             return CommandResult.FINISHED
 
@@ -54,6 +55,7 @@ class NewCommand(Command):
         if self.state == NewState.CONFIRM:
             if text.upper() in YES_OPTIONS:
                 ctx.new_project()
+                ctx.mark_saved()
                 ctx.write("Proyecto nuevo creado.")
 
             else:

@@ -80,7 +80,8 @@ class OpenCommand(Command):
                 filepath = text.strip().strip('"').strip("'")
 
             ok, message = ctx.load_project(filepath)
-
+            if ok:
+                ctx.mark_saved()
             ctx.write(message)
 
             return CommandResult.FINISHED

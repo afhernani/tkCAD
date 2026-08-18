@@ -27,10 +27,14 @@ class Document:
         self.history_limit = 100
         self._pending_snapshot = None
         self._mutated = False
+        # si hay cambios en el documento.
+        self.modified = False
+
 
     def notify_change(self):
         """Hook de cambio: CadApp lo sobreescribe con redraw."""
         self._mutated = True
+        self.modified = True
 
     def log(self, message: str):
         """Hook de mensajes: CadApp lo sobreescribe con write."""
@@ -1265,6 +1269,10 @@ class Document:
         """Inicio de una acción potencialmente mutante."""
         self._pending_snapshot = self._snapshot()
         self._mutated = False
+
+    def mark_saved(self):
+        """El proyecto queda como 'sin cambios pendientes'."""
+        self.modified = False
 
     def commit_action(self):
         """Fin de la acción: solo guarda el paso si hubo mutaciones."""

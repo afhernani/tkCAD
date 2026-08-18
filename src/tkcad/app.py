@@ -35,6 +35,12 @@ class CadApp(Document):
 
         self.show_grid = True
 
+        #Autoguardado cada 
+        self.autosave_ms = 5 * 60000
+        # El botón x de la ventana pasa por request_exit
+        self.root.protocol("WM_DELETE_WINDOW", self.request_exit)
+        self._schedule_autosave()
+
         # Canvas
         self.canvas = CadCanvas(root)
         self.grip_manager = GripManager(self.canvas, self)
@@ -193,6 +199,7 @@ class CadApp(Document):
         # Aquí podrías guardar cambios, cerrar archivos, etc.
         self.root.destroy()
     # end exit app
+
     def save_project(self, filepath=None, force_dialog: bool = False):
         try:
             # ----------------------------------------------------
@@ -391,6 +398,51 @@ class CadApp(Document):
     @grid_size.setter
     def grid_size(self, value):
         self.snaps.grid_size = value
+
+    # ----------------------------------
+    # AUTOSAVE
+    # ----------------------------------
+
+    def request_exit(self):
+        """Salida segura: confirma si hay cambios sin guardar."""
+        if self.modified:
+            from tkinter import messagebox
+            r = messagebox.askyesnocancel(
+                "Salir",
+                "Hay cambios sin guardar.\n¿Quieres guardar antes de salir?",
+            )
+            if r is None:                 # Cancelar → no salir
+                return
+            if r:                         # Sí → guardar antes de salir
+                ok, msg = self.save_project()
+                if not ok:                # si el guardado falla/se cancela, no salir
+                    self.write(msg)
+                    return
+        self.root.destroy()
+
+
+    def _schedule_autosave(self):
+        self.root.after(self.autosave_ms, self._do_autosave)
+
+
+    def _do_autosave(self):
+        try:
+            if self.modified and self.current_file is not None:
+                self._save_backup()
+        finally:
+            self._schedule_autosave()     # reprograma siempre
+
+
+    def _save_backup(self):
+        """Respaldo .~ sin tocar el archivo principal ni el flag modified."""
+        backup = Path(str(self.current_file) + "~")
+        self.project_io.save(
+            backup,
+            self.entities,
+            self.next_entity_id,
+            layers=self.layers,
+            current_layer=self.current_layer,
+        ) 
 
   
 # ============================================================

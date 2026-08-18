@@ -13,4 +13,5 @@ class ExitCommand(Command):
         return CommandResult.FINISHED
 
     def handle_input(self, ctx, text: str) -> CommandResult:
+        ctx.request_exit()
         return CommandResult.FINISHED
