@@ -102,6 +102,7 @@ class CadCanvas(tk.Canvas):
             "arc": "orange",
             "polygon": "magenta",
             "ellipse": "#ff99ff",
+            "text": "#ffcc66",
         }
 
         for entity in self.app.visible_entities():          # ← solo visibles
@@ -247,6 +248,27 @@ class CadCanvas(tk.Canvas):
                     )
 
                     self.item_to_entity[item] = entity.id
+
+            # ----------------------------------------------------
+            # Texto
+            # ----------------------------------------------------
+            elif entity.kind == "text":
+                pos = entity.data["position"]
+                height = entity.data["height"]
+                content = entity.data["content"]
+
+                x, y = self.world_to_canvas(pos)
+                font_px = max(int(self.world_to_canvas_length(height)), 4)
+
+                item = self.create_text(
+                    x, y,
+                    text=content,
+                    fill=color,
+                    anchor="center",
+                    font=("TkDefaultFont", -font_px),   # tamaño en píxeles → escala con zoom
+                )
+
+                self.item_to_entity[item] = entity.id
 
         # ----------------------------------------------------
         # Vista previa opcional

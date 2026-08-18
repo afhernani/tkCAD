@@ -103,6 +103,13 @@ class Document:
             },
         )
 
+    def add_text(self, position: Point, height: float, content: str):
+        return self.add_entity("text", {
+            "position": position,
+            "height": float(height),
+            "content": str(content),
+        })
+
     # --------------------------------------------------------
     # Capas
     # --------------------------------------------------------
@@ -335,7 +342,15 @@ class Document:
                 entity.data["center"],
                 dx,
                 dy,
-            )        
+            )
+
+        # texto
+        elif entity.kind == "text":
+            entity.data["position"] = self._move_point(
+                entity.data["position"],
+                dx,
+                dy,
+            )      
 
     def move_selected(self, dx: float, dy: float):
         if abs(dx) < 1e-9 and abs(dy) < 1e-9:
@@ -1411,6 +1426,18 @@ class Document:
                 center.y - ry,
                 center.x + rx,
                 center.y + ry,
+            )
+
+        elif entity.kind == "text":
+            pos = entity.data["position"]
+            height = entity.data["height"]
+            content = entity.data["content"]
+            approx_width = max(len(content), 1) * height * 0.6
+            return (
+                pos.x - approx_width / 2,
+                pos.y - height / 2,
+                pos.x + approx_width / 2,
+                pos.y + height / 2,
             )
         
         return None

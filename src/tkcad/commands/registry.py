@@ -15,6 +15,7 @@ from .drawing.circulo import CircleCommand
 from .drawing.arco import ArcCommand
 from .drawing.poligono import PolygonCommand
 from .drawing.elipse import ElipseCommand
+from .drawing.texto import TextoCommand
 
 # Modify
 from .modify.mover import MoveCommand
@@ -55,6 +56,7 @@ ALL_COMMANDS: List[Type[Command]] = [
     ArcCommand,
     PolygonCommand,
     ElipseCommand,
+    TextoCommand,
     # Modify
     MoveCommand,
     CopyCommand,

@@ -160,6 +160,21 @@ class GripManager:
                     "ellipse_y",
                 )
 
+            # ----------------------------------------------------
+            # Texto: grip de posición y grip de altura
+            # ----------------------------------------------------
+            elif entity.kind == "text":
+                pos = entity.data["position"]
+                height = entity.data["height"]
+                x, y = self.canvas.world_to_canvas(pos)
+                self.create_grip(x, y, entity.id, "text_pos")
+
+                h_point = Point(pos.x, pos.y + height)
+                hx, hy = self.canvas.world_to_canvas(h_point)
+                self.create_grip(hx, hy, entity.id, "text_height")
+
+            
+
     def create_mid_grip(self, x: float, y: float, entity_id: int, segment_index: int):
         """Crea un grip verde en el punto medio de un segmento.
         
@@ -380,7 +395,19 @@ class GripManager:
 
                     entity.data["rotation"] = (
                         math.degrees(math.atan2(dy, dx)) - 90.0
-                    ) % 360.0        
+                    ) % 360.0
+
+            # ----------------------------------------------------
+            # Texto
+            # ----------------------------------------------------
+            elif entity.kind == "text":
+                if grip["type"] == "text_pos":
+                    entity.data["position"] = p
+                elif grip["type"] == "text_height":
+                    base = entity.data["position"]
+                    h = math.hypot(p.x - base.x, p.y - base.y)
+                    if h > 0.05:
+                        entity.data["height"] = h      
 
         self.app.redraw()
 
@@ -429,6 +456,10 @@ class GripManager:
             if grip["type"] in ("ellipse_x", "ellipse_y"):
                 return entity.data["center"]
 
+        elif entity.kind == "text":
+            if grip["type"] == "text_height":
+                return entity.data["position"]
+
         return None
 
     def on_grip_released(self):
@@ -437,3 +468,5 @@ class GripManager:
             entity = self.app.get_entity_by_id(self.active_grip["entity_id"])
             if entity is not None and hasattr(entity, "_mid_grip_inserted"):
                 delattr(entity, "_mid_grip_inserted")
+
+

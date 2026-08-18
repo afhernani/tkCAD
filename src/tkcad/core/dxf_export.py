@@ -73,6 +73,10 @@ def _add_entity(msp, doc, entity) -> bool:
     elif kind == "ellipse":
         e = _add_ellipse(msp, data)
 
+    elif kind == "text":
+        e = msp.add_text(data["content"], height=data["height"])
+        e.set_pos((data["position"].x, data["position"].y))
+
     else:
         return False
 
