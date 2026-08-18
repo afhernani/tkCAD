@@ -249,7 +249,7 @@ class CadApp(Document):
         self.redraw()
     # exit app
     def exit_app(self):
-        self.root.after(100, self._close_window)
+        self.root.after(100, self.request_exit)
 
     def _close_window(self):
         # Aquí podrías guardar cambios, cerrar archivos, etc.
