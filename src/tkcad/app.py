@@ -10,6 +10,7 @@ from .ui.canvas import CadCanvas
 from .ui.grips import GripManager
 from .ui.layer_panel import LayerPanel
 from .ui.properties_panel import PropertiesPanel
+from .ui.statusbar import StatusBar
 from pathlib import Path
 from tkinter import filedialog
 
@@ -28,9 +29,11 @@ class CadApp(Document):
 
         self.root.bind("<F2>", lambda e: self.toggle_layer_panel())
         self.root.bind("<F3>", lambda e: self.toggle_properties_panel())
+        self.root.bind("<F4>", lambda e: self.toggle_statusbar())
         # --- estado del panel ---
         self._panel_visible = True
         self._props_visible = True
+        self._status_visible = True
 
         # self.entities = []
         # self.next_entity_id = 1
@@ -67,12 +70,12 @@ class CadApp(Document):
 
         self.layer_panel = LayerPanel(self.root, self) # contenedor principal
         self.properties_panel = PropertiesPanel(root, self)
+        self.statusbar = StatusBar(root, self)
         # -- Orden de empaquetado
         # self.layer_panel.pack(side="right", fill="y") # ajusta a tu Layout (pack/grid)
         # self.console.pack(side="bottom", fill="x")
         # self.canvas.pack(side="top", fill="both", expand=True)
         # Layout inicial
-        self._apply_layout()
 
         self.project_io = ProjectIO()
 
@@ -80,9 +83,12 @@ class CadApp(Document):
         self.write("Escribe AYUDA o pulsa Tab para ver los comandos disponibles.")
         self.prompt("Comando:")
 
+        self._apply_layout()
+
     def _apply_layout(self):
         """(Re)empaqueta los widgets en el orden correcto."""
         # Deshacer el empaquetado actual
+        self.statusbar.pack_forget()
         self.properties_panel.pack_forget()
         self.layer_panel.pack_forget()
         self.console.pack_forget()
@@ -93,6 +99,8 @@ class CadApp(Document):
             self.properties_panel.pack(side="left", fill="y")
         if self._panel_visible:
             self.layer_panel.pack(side="right", fill="y")
+        if self._status_visible:
+            self.statusbar.pack(side="bottom", fill="x")
         self.console.pack(side="bottom", fill="x")
         self.canvas.pack(side="top", fill="both", expand=True)
 
@@ -107,6 +115,11 @@ class CadApp(Document):
         self._props_visible = not self._props_visible
         self._apply_layout()
         return self._props_visible
+
+    def toggle_statusbar(self)->bool:
+        self._status_visible = not self._status_visible
+        self._apply_layout()
+        return self._status_visible
 
     def _process_command(self, text: str):
         self.manager.process_input(text)
@@ -351,6 +364,9 @@ class CadApp(Document):
     # --------------------------------------------------------
 
     def redraw(self):
+        if hasattr(self, "statusbar"):
+            self.statusbar.refresh()
+
         if hasattr(self, "properties_panel"):
             self.properties_panel.refresh()
         
@@ -455,6 +471,10 @@ class CadApp(Document):
     @grid_size.setter
     def grid_size(self, value):
         self.snaps.grid_size = value
+
+    def on_cursor_move(self, p):
+        if getattr(self, "_status_visible", False):
+            self.statusbar.set_coords(p.x, p.y)
 
     # ----------------------------------
     # AUTOSAVE

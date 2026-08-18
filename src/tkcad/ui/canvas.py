@@ -639,6 +639,7 @@ class CadCanvas(tk.Canvas):
         self._cycle_index = 0
 
     def _on_motion(self, event):
+        self.app.on_cursor_move(self.canvas_to_world(event.x, event.y))
         self._update_snap_marker(event)
         # 1) Vista previa del hilo elástico (LINEA / POLILINEA)
         pts = getattr(self.app, "preview_points", None)
