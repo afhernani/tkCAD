@@ -433,51 +433,50 @@ class GripManager:
                         math.degrees(math.atan2(dy, dx)) - 90.0
                     ) % 360.0
 
-            # ----------------------------------------------------
-            # Texto
-            # ----------------------------------------------------
-            elif entity.kind == "text":
-                if grip["type"] == "text_pos":
-                    entity.data["position"] = p
-                elif grip["type"] == "text_height":
-                    base = entity.data["position"]
-                    h = math.hypot(p.x - base.x, p.y - base.y)
-                    if h > 0.05:
-                        entity.data["height"] = h
+        # ----------------------------------------------------
+        # Texto
+        # ----------------------------------------------------
+        elif entity.kind == "text":
+            if grip["type"] == "text_pos":
+                entity.data["position"] = p
+            elif grip["type"] == "text_height":
+                base = entity.data["position"]
+                h = math.hypot(p.x - base.x, p.y - base.y)
+                if h > 0.05:
+                    entity.data["height"] = h
 
 
-            # ----------------------------------------------------
-            # Cota
-            # ----------------------------------------------------
-            elif entity.kind == "dimension":
-                t = grip["type"]
-                if t == "dim_p1":
-                    detach_assoc(entity.data)
-                    entity.data["p1"] = p
-                elif t == "dim_p2":
-                    detach_assoc(entity.data)
-                    entity.data["p2"] = p
-                elif t == "dim_center":
-                    detach_assoc(entity.data)
-                    entity.data["center"] = p
-                elif t == "dim_p":
-                    detach_assoc(entity.data)
-                    entity.data["p"] = p
-                elif t == "dim_offset":
-                    entity.data["offset"] = offset_from_point(entity.data, p)
-                elif t == "dim_text":
-                    base = dimension_geometry(entity.data)["text_point"]
-                    entity.data["text_offset"] = Point(p.x - base.x, p.y - base.y)
+        # ----------------------------------------------------
+        # Cota
+        # ----------------------------------------------------
+        elif entity.kind == "dimension":
+            t = grip["type"]
+            if t == "dim_p1":
+                detach_assoc(entity.data)
+                entity.data["p1"] = p
+            elif t == "dim_p2":
+                detach_assoc(entity.data)
+                entity.data["p2"] = p
+            elif t == "dim_center":
+                detach_assoc(entity.data)
+                entity.data["center"] = p
+            elif t == "dim_p":
+                detach_assoc(entity.data)
+                entity.data["p"] = p
+            elif t == "dim_offset":
+                entity.data["offset"] = offset_from_point(entity.data, p)
+            elif t == "dim_text":
+                base = dimension_geometry(entity.data)["text_point"]
+                entity.data["text_offset"] = Point(p.x - base.x, p.y - base.y)
 
-            # ----------------------------------------------------
-            # Spline: mover el punto de control i
-            # ----------------------------------------------------
-            elif entity.kind == "spline":
-                if grip["type"].startswith("spline_pt_"):
-                    idx = int(grip["type"].split("_")[-1])
-                    if 0 <= idx < len(entity.data["points"]):
-                        entity.data["points"][idx] = p
-               
+        # ----------------------------------------------------
+        # Spline: mover el punto de control i
+        # ----------------------------------------------------
+        elif entity.kind == "spline":
+            if grip["type"].startswith("spline_pt_"):
+                idx = int(grip["type"].split("_")[-1])
+                if 0 <= idx < len(entity.data["points"]):
+                    entity.data["points"][idx] = p     
 
         self.app.redraw()
 
