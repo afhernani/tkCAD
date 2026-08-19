@@ -4,7 +4,7 @@ Mapea cada entidad del modelo a su equivalente DXF usando ezdxf.
 """
 
 import math
-
+from .dimension import dimension_geometry
 
 def export_dxf(entities, path):
     """
@@ -77,6 +77,11 @@ def _add_entity(msp, doc, entity) -> bool:
         e = msp.add_text(data["content"], height=data["height"])
         e.set_pos((data["position"].x, data["position"].y))
 
+    elif kind == "dimension":
+        e = _add_dimension(msp, data)
+        if e is None:
+            return False
+
     else:
         return False
 
@@ -117,3 +122,56 @@ def _add_ellipse(msp, data):
 def _ensure_layer(doc, name):
     if name and name not in doc.layers:
         doc.layers.add(name)
+
+# -----------------------------------
+# AYUDAS COTAS
+# -----------------------------------
+
+def _add_dimension(msp, data):
+    """Convierte una cota tkCAD en un DIMENSION de DXF."""
+    g = dimension_geometry(data)
+    base = (g["text_point"].x, g["text_point"].y, 0)
+    t = data["dim_type"]
+
+    if t == "linear_h":
+        dim = msp.add_linear_dim(
+            base=base,
+            p1=(data["p1"].x, data["p1"].y, 0),
+            p2=(data["p2"].x, data["p2"].y, 0),
+            angle=0,
+        )
+    elif t == "linear_v":
+        dim = msp.add_linear_dim(
+            base=base,
+            p1=(data["p1"].x, data["p1"].y, 0),
+            p2=(data["p2"].x, data["p2"].y, 0),
+            angle=90,
+        )
+    elif t == "aligned":
+        dim = msp.add_aligned_dim(
+            base=base,
+            p1=(data["p1"].x, data["p1"].y, 0),
+            p2=(data["p2"].x, data["p2"].y, 0),
+        )
+    else:  # radius / diameter
+        dim = _add_radius_dim(msp, data["center"], data["p"])
+
+    dim.render()
+    return dim
+
+
+def _add_radius_dim(msp, center, p):
+    """Cota de radio, compatible con las dos firmas de ezdxf."""
+    try:
+        return msp.add_radius_dim(
+            center=(center.x, center.y, 0),
+            mpoint=(p.x, p.y, 0),
+        )
+    except TypeError:
+        r = math.hypot(p.x - center.x, p.y - center.y)
+        ang = math.degrees(math.atan2(p.y - center.y, p.x - center.x))
+        return msp.add_radius_dim(
+            center=(center.x, center.y, 0),
+            radius=r,
+            angle=ang,
+        )
