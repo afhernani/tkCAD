@@ -4,6 +4,7 @@ import math
 
 from .dimension import dimension_geometry, dimension_points
 from .img_transform import compute_image_fit
+from .spline import eval_cubic_spline
 
 
 def export_svg(entities, get_layer_color, path,
@@ -111,6 +112,18 @@ def _entity_svg(entity, w2p, scale, color):
     if k == "dimension":
         return _dimension_svg(d, w2p, scale, color)
 
+    if k == "spline":
+        curve = eval_cubic_spline(
+            d["points"],
+            samples_per_segment=50,
+            closed=d.get("closed", False),
+        )
+        pts = " ".join(
+            f"{w2p(p.x, p.y)[0]:.2f},{w2p(p.x, p.y)[1]:.2f}" for p in curve
+        )
+        return [f'<polyline points="{pts}" fill="none" stroke="{color}" '
+                f'stroke-width="{sw}"/>']
+
     return []
 
 
@@ -179,6 +192,14 @@ def _entity_bbox(entity):
         return (c.x - w / 2, c.y - h / 2, c.x + w / 2, c.y + h / 2)
     elif k == "dimension":
         pts = dimension_points(d)
+
+    elif k == "spline":
+        pts = eval_cubic_spline(
+            d["points"],
+            samples_per_segment=10,
+            closed=d.get("closed", False),
+        )
+    
     else:
         return None
 

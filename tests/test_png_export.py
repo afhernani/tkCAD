@@ -45,3 +45,13 @@ def test_export_png_dibuja_pixeles(tmp_path):
             
     assert (255, 255, 255) in colors   # la línea blanca
     assert (0, 0, 0) in colors         # el fondo negro
+
+def test_export_png_spline(tmp_path):
+    doc = Document()
+    doc.add_spline([Point(0, 0), Point(10, 5), Point(20, 0)])
+
+    path = tmp_path / "spline.png"
+    ok, msg = export_png(doc.entities, lambda n: "white", path)
+    assert ok, msg
+    assert Image.open(path).size == (800, 600)
+

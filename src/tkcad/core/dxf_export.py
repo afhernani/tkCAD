@@ -82,6 +82,9 @@ def _add_entity(msp, doc, entity) -> bool:
         if e is None:
             return False
 
+    elif kind == "spline":
+        e = _add_spline(msp, data)
+
     else:
         return False
 
@@ -175,3 +178,35 @@ def _add_radius_dim(msp, center, p):
             radius=r,
             angle=ang,
         )
+
+# ---------------------------
+# AYUDA AÑADIR CURVA SPLINE
+# ---------------------------
+
+def _add_spline(msp, data):
+    """Convierte una spline tkCAD en un SPLINE de DXF."""
+    pts = list(data["points"])
+    if data.get("closed", False) and len(pts) >= 3:
+        pts = pts + [pts[0]]
+    coords = [(p.x, p.y, 0) for p in pts]
+
+    spline = msp.add_spline()
+
+    # ezdxf moderno: fit_points es un atributo asignable
+    try:
+        spline.fit_points = coords
+    except Exception:
+        # Respaldo: definir por puntos de control
+        spline.control_points = coords
+        try:
+            spline.set_uniform_knots()
+        except Exception:
+            pass
+
+    try:
+        spline.dxf.degree = 3
+    except Exception:
+        pass
+
+    return spline
+

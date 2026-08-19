@@ -5,6 +5,7 @@ import math
 from .dimension import dimension_geometry
 from .img_transform import compute_image_fit
 from .svg_export import _all_bbox   # reutilizamos el bbox del exportador SVG
+from .spline import eval_cubic_spline
 
 
 def export_png(entities, get_layer_color, path,
@@ -82,6 +83,18 @@ def _draw_entity(draw, entity, w2p, scale, color):
 
     elif k == "dimension":
         _draw_dimension(draw, d, w2p, scale, color)
+
+    elif k == "spline":
+        pts = [
+            w2p(p.x, p.y)
+            for p in eval_cubic_spline(
+                d["points"],
+                samples_per_segment=50,
+                closed=d.get("closed", False),
+            )
+        ]
+        if len(pts) >= 2:
+            draw.line(pts, fill=color, width=1)
 
 
 def _sampled_arc(d, w2p, n=32):

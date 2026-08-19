@@ -46,3 +46,12 @@ def test_export_svg_cota(tmp_path):
 
     content = path.read_text(encoding="utf-8")
     assert "100.00" in content
+
+def test_export_svg_spline(tmp_path):
+    doc = Document()
+    doc.add_spline([Point(0, 0), Point(10, 5), Point(20, 0)])
+
+    path = tmp_path / "spline.svg"
+    ok, msg = export_svg(doc.entities, lambda n: "white", path)
+    assert ok, msg
+    assert "<polyline" in path.read_text(encoding="utf-8")

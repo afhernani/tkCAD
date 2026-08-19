@@ -61,3 +61,16 @@ def test_export_dxf_cota_radio(tmp_path):
     read = ezdxf.readfile(str(path))
     kinds = {e.dxftype() for e in read.modelspace()}
     assert "DIMENSION" in kinds
+
+def test_export_dxf_spline(tmp_path):
+    doc = Document()
+    doc.add_spline([Point(0, 0), Point(10, 5), Point(20, 0)])
+
+    path = tmp_path / "spline.dxf"
+    ok, msg = export_dxf(doc.entities, path)
+    assert ok, msg
+
+    read = ezdxf.readfile(str(path))
+    kinds = {e.dxftype() for e in read.modelspace()}
+    assert "SPLINE" in kinds
+
