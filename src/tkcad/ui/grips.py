@@ -184,6 +184,14 @@ class GripManager:
 
 
             # ----------------------------------------------------
+            # Spline: un grip por punto de control
+            # ----------------------------------------------------
+            elif entity.kind == "spline":
+                for i, pt in enumerate(entity.data["points"]):
+                    x, y = self.canvas.world_to_canvas(pt)
+                    self.create_grip(x, y, entity.id, f"spline_pt_{i}")
+
+            # ----------------------------------------------------
             # Texto: grip de posición y grip de altura
             # ----------------------------------------------------
             elif entity.kind == "text":
@@ -448,6 +456,15 @@ class GripManager:
                     entity.data["p"] = p
                 elif t == "dim_offset":
                     entity.data["offset"] = offset_from_point(entity.data, p)
+
+            # ----------------------------------------------------
+            # Spline: mover el punto de control i
+            # ----------------------------------------------------
+            elif entity.kind == "spline":
+                if grip["type"].startswith("spline_pt_"):
+                    idx = int(grip["type"].split("_")[-1])
+                    if 0 <= idx < len(entity.data["points"]):
+                        entity.data["points"][idx] = p
                
 
         self.app.redraw()
@@ -509,6 +526,15 @@ class GripManager:
                 return data.get("p1")
             if grip["type"] == "dim_p":
                 return data.get("center")
+
+        elif entity.kind == "spline":
+            if grip["type"].startswith("spline_pt_"):
+                idx = int(grip["type"].split("_")[-1])
+                pts = entity.data["points"]
+                if idx > 0:
+                    return pts[idx - 1]      # ORTHO relativo al punto anterior
+                if len(pts) > 1:
+                    return pts[1]
 
         return None
 

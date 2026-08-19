@@ -105,6 +105,7 @@ class CadCanvas(tk.Canvas):
             "ellipse": "#ff99ff",
             "text": "#ffcc66",
             "dimension": "#ff9944",
+            "spline": "#66ccff",
         }
 
         for entity in self.app.visible_entities():          # ← solo visibles
@@ -311,6 +312,25 @@ class CadCanvas(tk.Canvas):
                     font=("TkDefaultFont", -font_px),
                 )
                 self.item_to_entity[item] = entity.id
+
+
+            # ----------------------------------------------------
+            # Spline: curva evaluada como polilínea de alta resolución
+            # ----------------------------------------------------
+            elif entity.kind == "spline":
+                from ..core.spline import eval_cubic_spline
+
+                curve = eval_cubic_spline(
+                    entity.data["points"],
+                    samples_per_segment=30,
+                    closed=entity.data.get("closed", False),
+                )
+
+                screen_pts = [self.world_to_canvas(p) for p in curve]
+                if len(screen_pts) >= 2:
+                    item = self.create_line(screen_pts, fill=color)
+                    self.item_to_entity[item] = entity.id
+
 
         # ----------------------------------------------------
         # Vista previa opcional

@@ -122,6 +122,12 @@ class Document:
             data["p"] = p
         return self.add_entity("dimension", data)
 
+    def add_spline(self, points, closed=False):
+        return self.add_entity("spline", {
+            "points": list(points),
+            "closed": bool(closed),
+        })
+
     # --------------------------------------------------------
     # Capas
     # --------------------------------------------------------
@@ -370,6 +376,12 @@ class Document:
                     entity.data[key] = self._move_point(
                         entity.data[key], dx, dy,
                     )
+
+        elif entity.kind == "spline":
+            entity.data["points"] = [
+                self._move_point(p, dx, dy)
+                for p in entity.data["points"]
+            ]
 
 
     def move_selected(self, dx: float, dy: float):
@@ -1470,6 +1482,18 @@ class Document:
                     max(xs), 
                     max(ys),
             )
+
+        elif entity.kind == "spline":
+            from .spline import eval_cubic_spline
+            # bbox sobre la curva evaluada (más preciso que el polígono de control)
+            pts = eval_cubic_spline(
+                entity.data["points"],
+                samples_per_segment=10,
+                closed=entity.data.get("closed", False),
+            )
+            xs = [p.x for p in pts]
+            ys = [p.y for p in pts]
+            return (min(xs), min(ys), max(xs), max(ys))
         
         return None
 
