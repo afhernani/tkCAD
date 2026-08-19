@@ -110,6 +110,18 @@ class Document:
             "content": str(content),
         })
 
+    def add_dimension(self, dim_type, p1=None, p2=None, center=None, p=None, offset=10.0):
+        data = {"dim_type": dim_type, "offset": float(offset)}
+        if p1 is not None:
+            data["p1"] = p1
+        if p2 is not None:
+            data["p2"] = p2
+        if center is not None:
+            data["center"] = center
+        if p is not None:
+            data["p"] = p
+        return self.add_entity("dimension", data)
+
     # --------------------------------------------------------
     # Capas
     # --------------------------------------------------------
@@ -350,7 +362,15 @@ class Document:
                 entity.data["position"],
                 dx,
                 dy,
-            )      
+            )
+
+        elif entity.kind == "dimension":
+            for key in ("p1", "p2", "center", "p"):
+                if key in entity.data:
+                    entity.data[key] = self._move_point(
+                        entity.data[key], dx, dy,
+                    )
+
 
     def move_selected(self, dx: float, dy: float):
         if abs(dx) < 1e-9 and abs(dy) < 1e-9:
@@ -1438,6 +1458,17 @@ class Document:
                 pos.y - height / 2,
                 pos.x + approx_width / 2,
                 pos.y + height / 2,
+            )
+
+        elif entity.kind == "dimension":
+            from .dimension import dimension_points
+            pts = dimension_points(entity.data)
+            xs = [p.x for p in pts]
+            ys = [p.y for p in pts]
+            return (min(xs), 
+                    min(ys), 
+                    max(xs), 
+                    max(ys),
             )
         
         return None

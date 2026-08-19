@@ -16,6 +16,7 @@ from .drawing.arco import ArcCommand
 from .drawing.poligono import PolygonCommand
 from .drawing.elipse import ElipseCommand
 from .drawing.texto import TextoCommand
+from .drawing.cota import CotaCommand
 
 # Modify
 from .modify.mover import MoveCommand
@@ -60,6 +61,7 @@ ALL_COMMANDS: List[Type[Command]] = [
     PolygonCommand,
     ElipseCommand,
     TextoCommand,
+    CotaCommand,
     # Modify
     MoveCommand,
     CopyCommand,

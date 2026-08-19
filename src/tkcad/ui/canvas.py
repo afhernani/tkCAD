@@ -3,6 +3,7 @@ import tkinter as tk
 
 from ..core import Point
 from .snap_markers import SnapMarkerDrawer, SNAP_MARKER_KINDS
+from ..core.dimension import dimension_geometry
 
 
 class CadCanvas(tk.Canvas):
@@ -103,6 +104,7 @@ class CadCanvas(tk.Canvas):
             "polygon": "magenta",
             "ellipse": "#ff99ff",
             "text": "#ffcc66",
+            "dimension": "#ff9944",
         }
 
         for entity in self.app.visible_entities():          # ← solo visibles
@@ -268,6 +270,46 @@ class CadCanvas(tk.Canvas):
                     font=("TkDefaultFont", -font_px),   # tamaño en píxeles → escala con zoom
                 )
 
+                self.item_to_entity[item] = entity.id
+
+            # ----------------------------------------------------
+            # Cota: extensiones + línea de cota + flechas + texto
+            # ----------------------------------------------------
+            elif entity.kind == "dimension":
+                g = dimension_geometry(entity.data)
+
+                # Líneas de extensión
+                for ext in (g["ext1"], g["ext2"]):
+                    if ext is None:
+                        continue
+                    a, b = ext
+                    x1, y1 = self.world_to_canvas(a)
+                    x2, y2 = self.world_to_canvas(b)
+                    item = self.create_line(x1, y1, x2, y2, fill=color)
+                    self.item_to_entity[item] = entity.id
+
+                # Línea de cota
+                x1, y1 = self.world_to_canvas(g["dim_start"])
+                x2, y2 = self.world_to_canvas(g["dim_end"])
+                item = self.create_line(x1, y1, x2, y2, fill=color)
+                self.item_to_entity[item] = entity.id
+
+                # Flechas
+                self._draw_dimension_arrows(g, color, entity.id)
+
+                # Texto con la medida (escala con el zoom)
+                prefix = {"radius": "R", "diameter": "Ø"}.get(
+                    entity.data["dim_type"], ""
+                )
+                label = f"{prefix}{g['value']:.2f}"
+                tx, ty = self.world_to_canvas(g["text_point"])
+                font_px = max(int(2.5 * self.scale), 6)
+                item = self.create_text(
+                    tx, ty - font_px,
+                    text=label,
+                    fill=color,
+                    font=("TkDefaultFont", -font_px),
+                )
                 self.item_to_entity[item] = entity.id
 
         # ----------------------------------------------------
@@ -867,3 +909,32 @@ class CadCanvas(tk.Canvas):
         if hasattr(self.app, "console"):
             self.app.console.entry.focus_set()
         self.app._update_command_cursor()
+
+    # --------------------------------------
+    # AYUDAS A DIMENSIONAR FLECHAS ARRAWS
+    # --------------------------------------
+
+    def _draw_dimension_arrows(self, g, color, entity_id):
+        """Dibuja las flechas en los extremos de la línea de cota."""
+        ax, ay = self.world_to_canvas(g["dim_start"])
+        bx, by = self.world_to_canvas(g["dim_end"])
+        length = math.hypot(bx - ax, by - ay)
+        if length < 1e-9:
+            return
+
+        angle = math.atan2(by - ay, bx - ax)
+        size = 8.0   # tamaño fijo en píxeles (como en un CAD)
+
+        # Radio: una sola flecha en el extremo; lineales: dos
+        if g.get("ext1") is None:
+            tips = [(bx, by, angle)]
+        else:
+            tips = [(ax, ay, angle + math.pi), (bx, by, angle)]
+
+        for tip_x, tip_y, ang in tips:
+            for delta in (math.radians(20), -math.radians(20)):
+                x2 = tip_x - size * math.cos(ang + delta)
+                y2 = tip_y - size * math.sin(ang + delta)
+                item = self.create_line(tip_x, tip_y, x2, y2, fill=color)
+                self.item_to_entity[item] = entity_id
+

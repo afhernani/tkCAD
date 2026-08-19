@@ -1,7 +1,7 @@
 import math
 
 from ..core import Point
-
+from ..core.dimension import dimension_geometry, offset_from_point
 
 class GripManager:
     """Gestiona los grips (tiradores) de las entidades seleccionadas.
@@ -159,6 +159,29 @@ class GripManager:
                     entity.id,
                     "ellipse_y",
                 )
+
+
+            # ----------------------------------------------------
+            # Cota: grips en puntos de definición y en la línea de cota
+            # ----------------------------------------------------
+            elif entity.kind == "dimension":
+                data = entity.data
+
+                for key in ("p1", "p2", "center", "p"):
+                    if key in data:
+                        x, y = self.canvas.world_to_canvas(data[key])
+                        self.create_grip(x, y, entity.id, f"dim_{key}")
+
+                # Grip de offset (mover la línea de cota) solo en lineales
+                if data["dim_type"] in ("linear_h", "linear_v", "aligned"):
+                    g = dimension_geometry(data)
+                    mid = Point(
+                        (g["dim_start"].x + g["dim_end"].x) / 2,
+                        (g["dim_start"].y + g["dim_end"].y) / 2,
+                    )
+                    x, y = self.canvas.world_to_canvas(mid)
+                    self.create_grip(x, y, entity.id, "dim_offset")
+
 
             # ----------------------------------------------------
             # Texto: grip de posición y grip de altura
@@ -407,7 +430,25 @@ class GripManager:
                     base = entity.data["position"]
                     h = math.hypot(p.x - base.x, p.y - base.y)
                     if h > 0.05:
-                        entity.data["height"] = h      
+                        entity.data["height"] = h
+
+
+            # ----------------------------------------------------
+            # Cota
+            # ----------------------------------------------------
+            elif entity.kind == "dimension":
+                t = grip["type"]
+                if t == "dim_p1":
+                    entity.data["p1"] = p
+                elif t == "dim_p2":
+                    entity.data["p2"] = p
+                elif t == "dim_center":
+                    entity.data["center"] = p
+                elif t == "dim_p":
+                    entity.data["p"] = p
+                elif t == "dim_offset":
+                    entity.data["offset"] = offset_from_point(entity.data, p)
+               
 
         self.app.redraw()
 
@@ -459,6 +500,15 @@ class GripManager:
         elif entity.kind == "text":
             if grip["type"] == "text_height":
                 return entity.data["position"]
+
+        elif entity.kind == "dimension":
+            data = entity.data
+            if grip["type"] == "dim_p1":
+                return data.get("p2")
+            if grip["type"] == "dim_p2":
+                return data.get("p1")
+            if grip["type"] == "dim_p":
+                return data.get("center")
 
         return None
 
