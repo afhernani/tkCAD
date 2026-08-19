@@ -74,3 +74,12 @@ def test_export_dxf_spline(tmp_path):
     kinds = {e.dxftype() for e in read.modelspace()}
     assert "SPLINE" in kinds
 
+def test_export_dxf_mtext(tmp_path):
+    doc = Document()
+    doc.add_text(Point(0, 0), 2.0, "A\nB")
+    path = tmp_path / "mtext.dxf"
+    ok, msg = export_dxf(doc.entities, path)
+    assert ok, msg
+    read = ezdxf.readfile(str(path))
+    kinds = {e.dxftype() for e in read.modelspace()}
+    assert "MTEXT" in kinds

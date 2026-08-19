@@ -55,3 +55,13 @@ def test_export_svg_spline(tmp_path):
     ok, msg = export_svg(doc.entities, lambda n: "white", path)
     assert ok, msg
     assert "<polyline" in path.read_text(encoding="utf-8")
+
+def test_export_svg_multilinea_tspan(tmp_path):
+    doc = Document()
+    doc.add_text(Point(5, 5), 2.0, "HOLA\nMUNDO")
+    path = tmp_path / "m.svg"
+    ok, msg = export_svg(doc.entities, lambda n: "white", path)
+    assert ok, msg
+    content = path.read_text(encoding="utf-8")
+    assert "<tspan" in content
+    assert content.count("<tspan") == 2

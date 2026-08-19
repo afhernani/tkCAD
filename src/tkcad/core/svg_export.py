@@ -6,6 +6,7 @@ from .dimension import (dimension_geometry, dimension_points,
                         dimension_text_position, dimension_text_height)
 from .img_transform import compute_image_fit
 from .spline import eval_cubic_spline
+from .text_layout import text_block_size, split_lines
 
 
 def export_svg(entities, get_layer_color, path,
@@ -104,11 +105,21 @@ def _entity_svg(entity, w2p, scale, color):
                 f'transform="rotate({rot:.2f} {cx:.2f} {cy:.2f})"/>']
 
     if k == "text":
+        from .text_layout import split_lines
         x, y = w2p(d["position"].x, d["position"].y)
         fs = max(d["height"] * scale, 4)
-        return [f'<text x="{x:.2f}" y="{y:.2f}" fill="{color}" '
-                f'font-size="{fs:.2f}" text-anchor="middle">'
-                f'{_esc(d["content"])}</text>']
+        line_h = fs *1.4
+        lines = split_lines(d["content"])
+        tspans = []
+        for i, line in enumerate(lines):
+            dy = i * line_h
+            tspans.append(
+                f'<tspan x="{x:.2f}" y="{y + dy:.2f}">{_esc(line)}</tspan>'
+            )
+        return [
+            f'<text fill="{color}" font-size="{fs:.2f}" text-anchor="middle">'
+            + "".join(tspans) + "</text>"
+        ]
 
     if k == "dimension":
         return _dimension_svg(d, w2p, scale, color)

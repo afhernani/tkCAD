@@ -1497,16 +1497,11 @@ class Document:
             )
 
         elif entity.kind == "text":
-            pos = entity.data["position"]
-            height = entity.data["height"]
-            content = entity.data["content"]
-            approx_width = max(len(content), 1) * height * 0.6
-            return (
-                pos.x - approx_width / 2,
-                pos.y - height / 2,
-                pos.x + approx_width / 2,
-                pos.y + height / 2,
-            )
+            from .text_layout import text_block_size
+            d = entity.data
+            c, h = d["position"], d["height"]
+            w, total = text_block_size(d["content"], h)
+            return (c.x - w / 2, c.y - total / 2, c.x + w / 2, c.y + total / 2)
 
         elif entity.kind == "dimension":
             from .dimension import dimension_points
@@ -1766,7 +1761,7 @@ class Document:
             data[field] = float(num)
 
         elif isinstance(current, str):
-            data[field] = str(value)
+            data[field] = str(value).replace("\\n", "\n")
 
         else:
             return False, f"Campo no editable: {field}"

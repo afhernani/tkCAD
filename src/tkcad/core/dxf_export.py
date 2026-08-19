@@ -74,8 +74,26 @@ def _add_entity(msp, doc, entity) -> bool:
         e = _add_ellipse(msp, data)
 
     elif kind == "text":
-        e = msp.add_text(data["content"], height=data["height"])
-        e.set_pos((data["position"].x, data["position"].y))
+        content = data["content"]
+        if "\n" in content:
+            # Multilinea: usar MTEXT
+            msp.add_mtext(
+                content.replace("\n", "\\P"),
+                dxfattribs={
+                    "insert": (data["position"].x, data["position"].y, 0),
+                    "char_height": data["height"],
+                    "attachment_point": 8,   # Middle Bottom-Center
+                },
+            )
+        else:
+            # Texto simple
+            msp.add_text(
+                content,
+                height=data["height"],
+                dxfattribs={
+                    "insert": (data["position"].x, data["position"].y, 0),
+                },
+            )
 
     elif kind == "dimension":
         e = _add_dimension(msp, data)

@@ -58,7 +58,8 @@ class TextoCommand(Command):
             if text.upper() == "ESC" or not text:
                 ctx.write("Comando TEXTO cancelado.")
                 return CommandResult.FINISHED
-            ctx.add_text(self.position, self.height, text)
+            content = self._normalize_newlines(text)
+            ctx.add_text(self.position, self.height, content)
             ctx.write(f"Texto creado: '{text}'")
             return CommandResult.FINISHED
 
@@ -69,3 +70,7 @@ class TextoCommand(Command):
 
     def get_point_base(self):
         return None
+
+    def _normalize_newlines(self, text: str) -> str:
+        """Convierte los escapes \\n escritos por el usuario en saltos reales."""
+        return text.replace("\\n", "\n")
