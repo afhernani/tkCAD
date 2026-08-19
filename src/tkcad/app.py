@@ -11,6 +11,7 @@ from .ui.grips import GripManager
 from .ui.layer_panel import LayerPanel
 from .ui.properties_panel import PropertiesPanel
 from .ui.statusbar import StatusBar
+from .ui.toolbar import ToolBar
 from pathlib import Path
 from tkinter import filedialog
 
@@ -30,10 +31,12 @@ class CadApp(Document):
         self.root.bind("<F2>", lambda e: self.toggle_layer_panel())
         self.root.bind("<F3>", lambda e: self.toggle_properties_panel())
         self.root.bind("<F4>", lambda e: self.toggle_statusbar())
+        self.root.bind("<F5>", lambda e: self.toggle_toolbar())
         # --- estado del panel ---
         self._panel_visible = True
         self._props_visible = True
         self._status_visible = True
+        self._toolbar_visible = True
 
         # self.entities = []
         # self.next_entity_id = 1
@@ -71,6 +74,7 @@ class CadApp(Document):
         self.layer_panel = LayerPanel(self.root, self) # contenedor principal
         self.properties_panel = PropertiesPanel(root, self)
         self.statusbar = StatusBar(root, self)
+        self.toolbar = ToolBar(self.root, self)
         # -- Orden de empaquetado
         # self.layer_panel.pack(side="right", fill="y") # ajusta a tu Layout (pack/grid)
         # self.console.pack(side="bottom", fill="x")
@@ -88,6 +92,7 @@ class CadApp(Document):
     def _apply_layout(self):
         """(Re)empaqueta los widgets en el orden correcto."""
         # Deshacer el empaquetado actual
+        self.toolbar.pack_forget()
         self.statusbar.pack_forget()
         self.properties_panel.pack_forget()
         self.layer_panel.pack_forget()
@@ -95,6 +100,8 @@ class CadApp(Document):
         self.canvas.pack_forget()
 
         # Re-empaquetar en orden: panel derecha → consola abajo → canvas arriba
+        if self._toolbar_visible:
+            self.toolbar.pack(side="top", fill="x")
         if self._props_visible:
             self.properties_panel.pack(side="left", fill="y")
         if self._panel_visible:
@@ -614,6 +621,23 @@ class CadApp(Document):
                 seen.add(eid)
                 return self.get_entity_by_id(eid)
         return None
+
+    # ------------------------------------
+    # TOOLBAR
+    # ------------------------------------
+    def run_command(self, name):
+        """Lanza un comando como si se tecleara en la consola."""
+        self._process_command(name)
+
+
+    def toggle_toolbar(self):
+        self._toolbar_visible = not self._toolbar_visible
+        self._apply_layout()
+        self.write(
+            "Barra de herramientas visible."
+            if self._toolbar_visible else
+            "Barra de herramientas oculta."
+        )
 
 
 # ============================================================
