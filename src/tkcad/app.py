@@ -547,6 +547,56 @@ class CadApp(Document):
 
         return _export(self.entities, path)
 
+    # -----------------------------------
+    # EXPORT PNG
+    # -----------------------------------
+    def export_image(self, filepath=None, fmt=None):
+        """Exporta el dibujo a SVG o PNG según la extensión o formato indicado."""
+        from .core.svg_export import export_svg
+        from .core.png_export import export_png
+
+        # --- Decidir ruta ---
+        if filepath is None:
+            filetypes = [
+                ("SVG (vectorial)", "*.svg"),
+                ("PNG (raster)", "*.png"),
+                ("Todos", "*.*"),
+            ]
+            selected = filedialog.asksaveasfilename(
+                parent=self.root,
+                title="Exportar imagen",
+                defaultextension=".svg",
+                filetypes=filetypes,
+            )
+            if not selected:
+                return False, "Exportación cancelada."
+            path = Path(selected)
+        else:
+            path = Path(filepath).expanduser()
+
+        # --- Decidir formato ---
+        ext = path.suffix.lower().lstrip(".")
+        if fmt:
+            kind = fmt.lower()
+        else:
+            kind = ext
+
+        if kind not in ("svg", "png"):
+            kind = "svg"
+
+        if path.suffix.lower() not in (".svg", ".png"):
+            path = path.with_suffix(f".{kind}")
+
+        # --- Color por capa (callable para los exportadores) ---
+        def get_layer_color(name):
+            layer = self.get_layer(name)
+            return layer.color if layer is not None else None
+
+        if kind == "svg":
+            return export_svg(self.entities, get_layer_color, path)
+        else:
+            return export_png(self.entities, get_layer_color, path)
+
 
 # ============================================================
 # Ejecución

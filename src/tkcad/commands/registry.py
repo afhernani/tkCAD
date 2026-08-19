@@ -33,6 +33,7 @@ from .file.guardar import SaveCommand, SaveAsCommand
 from .file.abrir import OpenCommand
 from .file.nuevo import NewCommand
 from .file.exportar import ExportCommand
+from .file.exportarimg import ExportarImgCommand
 
 # View
 from .view.seleccion import SelectCommand, ListCommand
@@ -77,6 +78,7 @@ ALL_COMMANDS: List[Type[Command]] = [
     OpenCommand,
     NewCommand,
     ExportCommand,
+    ExportarImgCommand,
     # View
     SelectCommand,
     ListCommand,
