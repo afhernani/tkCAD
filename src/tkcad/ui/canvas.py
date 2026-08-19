@@ -3,7 +3,9 @@ import tkinter as tk
 
 from ..core import Point
 from .snap_markers import SnapMarkerDrawer, SNAP_MARKER_KINDS
-from ..core.dimension import dimension_geometry
+from ..core.dimension import (dimension_geometry,
+                                  dimension_text_position,
+                                  dimension_text_height)
 
 
 class CadCanvas(tk.Canvas):
@@ -298,13 +300,15 @@ class CadCanvas(tk.Canvas):
                 # Flechas
                 self._draw_dimension_arrows(g, color, entity.id)
 
-                # Texto con la medida (escala con el zoom)
+                # Texto con la medida (posición y altura editables)
                 prefix = {"radius": "R", "diameter": "Ø"}.get(
                     entity.data["dim_type"], ""
                 )
                 label = f"{prefix}{g['value']:.2f}"
-                tx, ty = self.world_to_canvas(g["text_point"])
-                font_px = max(int(2.5 * self.scale), 6)
+                tp = dimension_text_position(entity.data)   # ← respeta text_offset
+                th = dimension_text_height(entity.data)     # ← respeta text_height
+                tx, ty = self.world_to_canvas(tp)
+                font_px = max(int(th * self.scale), 4)
                 item = self.create_text(
                     tx, ty - font_px,
                     text=label,
@@ -312,7 +316,6 @@ class CadCanvas(tk.Canvas):
                     font=("TkDefaultFont", -font_px),
                 )
                 self.item_to_entity[item] = entity.id
-
 
             # ----------------------------------------------------
             # Spline: curva evaluada como polilínea de alta resolución

@@ -597,6 +597,24 @@ class CadApp(Document):
         else:
             return export_png(self.entities, get_layer_color, path)
 
+    # --------------------------------------
+    # ASOCIACION DE COTA
+    # --------------------------------------
+
+    def entity_at_point(self, p, radius=3):
+        """Devuelve la entidad dibujada bajo el punto p (o None)."""
+        x, y = self.canvas.world_to_canvas(p)
+        ids = self.canvas.find_overlapping(
+            x - radius, y - radius, x + radius, y + radius,
+        )
+        seen = set()
+        for item in ids:
+            eid = self.canvas.item_to_entity.get(item)
+            if eid is not None and eid not in seen:
+                seen.add(eid)
+                return self.get_entity_by_id(eid)
+        return None
+
 
 # ============================================================
 # Ejecución

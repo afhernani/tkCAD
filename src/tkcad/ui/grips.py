@@ -1,7 +1,8 @@
 import math
 
 from ..core import Point
-from ..core.dimension import dimension_geometry, offset_from_point
+from ..core.dimension import (dimension_geometry, offset_from_point,
+                              detach_assoc, dimension_text_position)
 
 class GripManager:
     """Gestiona los grips (tiradores) de las entidades seleccionadas.
@@ -182,6 +183,10 @@ class GripManager:
                     x, y = self.canvas.world_to_canvas(mid)
                     self.create_grip(x, y, entity.id, "dim_offset")
 
+                # Grip para reposicionar el texto  ← AÑADE ESTO
+                tp = dimension_text_position(data)
+                x, y = self.canvas.world_to_canvas(tp)
+                self.create_grip(x, y, entity.id, "dim_text")
 
             # ----------------------------------------------------
             # Spline: un grip por punto de control
@@ -447,15 +452,22 @@ class GripManager:
             elif entity.kind == "dimension":
                 t = grip["type"]
                 if t == "dim_p1":
+                    detach_assoc(entity.data)
                     entity.data["p1"] = p
                 elif t == "dim_p2":
+                    detach_assoc(entity.data)
                     entity.data["p2"] = p
                 elif t == "dim_center":
+                    detach_assoc(entity.data)
                     entity.data["center"] = p
                 elif t == "dim_p":
+                    detach_assoc(entity.data)
                     entity.data["p"] = p
                 elif t == "dim_offset":
                     entity.data["offset"] = offset_from_point(entity.data, p)
+                elif t == "dim_text":
+                    base = dimension_geometry(entity.data)["text_point"]
+                    entity.data["text_offset"] = Point(p.x - base.x, p.y - base.y)
 
             # ----------------------------------------------------
             # Spline: mover el punto de control i

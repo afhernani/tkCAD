@@ -121,3 +121,57 @@ def offset_from_point(data, p):
         return (p.x - p1.x) * nx + (p.y - p1.y) * ny
 
     return data.get("offset", 10.0)
+
+
+def resolve_assoc(data, entity):
+    """
+    Resuelve los puntos de una cota asociativa a partir de la entidad
+    referenciada.
+    
+    Args:
+        data: dict de datos de la cota (con assoc_kind y opcionalmente
+              assoc_angle)
+        entity: entidad referenciada (Entity)
+    
+    Returns:
+        dict con los puntos resueltos para actualizar en data,
+        o None si el tipo de asociación no aplica.
+    """
+    kind = data.get("assoc_kind")
+
+    # Línea → sus extremos son los puntos de la cota
+    if kind == "line" and entity.kind == "line":
+        return {"p1": entity.data["start"], "p2": entity.data["end"]}
+
+    # Radio de círculo/arco → centro + punto al ángulo guardado
+    if kind == "radius" and entity.kind in ("circle", "arc"):
+        center = entity.data["center"]
+        r = entity.data["radius"]
+        ang = math.radians(data.get("assoc_angle", 0.0))
+        p = Point(
+            center.x + r * math.cos(ang),
+            center.y + r * math.sin(ang),
+        )
+        return {"center": center, "p": p}
+
+    return None
+
+
+def dimension_text_position(data):
+    """Posición del texto = punto medio de la línea de cota + text_offset."""
+    g = dimension_geometry(data)
+    off = data.get("text_offset") or Point(0, 0)
+    return Point(g["text_point"].x + off.x, g["text_point"].y + off.y)
+
+
+def dimension_text_height(data):
+    """Altura del texto de la cota (unidades de mundo)."""
+    return float(data.get("text_height", 2.5))
+
+
+def detach_assoc(data):
+    """Convierte una cota asociativa en libre (elimina la referencia)."""
+    data.pop("assoc_entity_id", None)
+    data.pop("assoc_kind", None)
+    return data
+

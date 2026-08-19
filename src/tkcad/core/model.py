@@ -33,6 +33,7 @@ class Document:
 
     def notify_change(self):
         """Hook de cambio: CadApp lo sobreescribe con redraw."""
+        self.update_associative_dimensions()
         self._mutated = True
         self.modified = True
 
@@ -110,8 +111,15 @@ class Document:
             "content": str(content),
         })
 
-    def add_dimension(self, dim_type, p1=None, p2=None, center=None, p=None, offset=10.0):
-        data = {"dim_type": dim_type, "offset": float(offset)}
+    def add_dimension(self, dim_type, p1=None, p2=None, center=None, p=None,
+                    offset=10.0, assoc_entity_id=None, assoc_kind=None,
+                    assoc_angle=None, text_height=2.5):
+        data = {
+            "dim_type": dim_type,
+            "offset": float(offset),
+            "text_height": float(text_height),
+            "text_offset": Point(0, 0),
+        }
         if p1 is not None:
             data["p1"] = p1
         if p2 is not None:
@@ -120,7 +128,35 @@ class Document:
             data["center"] = center
         if p is not None:
             data["p"] = p
+        if assoc_entity_id is not None:
+            data["assoc_entity_id"] = assoc_entity_id
+        if assoc_kind is not None:
+            data["assoc_kind"] = assoc_kind
+        if assoc_angle is not None:
+            data["assoc_angle"] = float(assoc_angle)
         return self.add_entity("dimension", data)
+
+    def update_associative_dimensions(self):
+        """Re-resuelve los puntos de las cotas asociativas desde su entidad."""
+        from .dimension import resolve_assoc
+
+        for entity in self.entities:
+            if entity.kind != "dimension":
+                continue
+            ref_id = entity.data.get("assoc_entity_id")
+            if ref_id is None:
+                continue
+
+            ref = self.get_entity_by_id(ref_id)
+            if ref is None:
+                # La entidad referida ya no existe → desasocia, conserva puntos
+                entity.data.pop("assoc_entity_id", None)
+                entity.data.pop("assoc_kind", None)
+                continue
+
+            resolved = resolve_assoc(entity.data, ref)
+            if resolved:
+                entity.data.update(resolved)
 
     def add_spline(self, points, closed=False):
         return self.add_entity("spline", {
@@ -1678,6 +1714,18 @@ class Document:
                 ("position", pt(d["position"])), ("height", round(d["height"], 3)),
                 ("content", d["content"]),
             ]
+        elif entity.kind == "dimension":
+            props += [
+                ("offset", round(d.get("offset", 10.0), 3)),
+                ("text_height", round(d.get("text_height", 2.5), 3)),
+                ("asociada", "SI" if d.get("assoc_entity_id") else "no"),
+            ]
+        elif entity.kind == "spline":
+            props += [
+                ("puntos", len(d["points"])),
+                ("closed", "SI" if d.get("closed") else "no"),
+            ]
+        
         return props
 
 

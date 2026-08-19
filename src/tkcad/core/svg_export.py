@@ -2,7 +2,8 @@
 
 import math
 
-from .dimension import dimension_geometry, dimension_points
+from .dimension import (dimension_geometry, dimension_points,
+                        dimension_text_position, dimension_text_height)
 from .img_transform import compute_image_fit
 from .spline import eval_cubic_spline
 
@@ -145,8 +146,9 @@ def _dimension_svg(d, w2p, scale, color):
     out.append(f'<line x1="{x1:.2f}" y1="{y1:.2f}" x2="{x2:.2f}" '
                f'y2="{y2:.2f}" stroke="{color}" stroke-width="1"/>')
 
-    tx, ty = w2p(g["text_point"].x, g["text_point"].y)
-    fs = max(2.5 * scale, 4)
+    tp = dimension_text_position(d)          # respeta text_offset
+    tx, ty = w2p(tp.x, tp.y)
+    fs = max(dimension_text_height(d) * scale, 4)   # respeta text_height
     prefix = {"radius": "R", "diameter": "Ø"}.get(d["dim_type"], "")
     out.append(f'<text x="{tx:.2f}" y="{ty - fs:.2f}" fill="{color}" '
                f'font-size="{fs:.2f}" text-anchor="middle">'
