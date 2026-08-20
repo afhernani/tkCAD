@@ -84,11 +84,18 @@ def dimension_geometry(data):
         return linear_geometry(data["p1"], data["p2"], offset, t == "linear_h")
     if t == "aligned":
         return aligned_geometry(data["p1"], data["p2"], offset)
+    if t == "angular":                      # acotacion angular
+        return angular_geometry(data)
     return radius_geometry(data["center"], data["p"])
 
 
 def dimension_points(data):
     """Todos los puntos que ocupa la cota (para bbox/selección)."""
+    if data["dim_type"] == "angular":
+        g = angular_geometry(data)
+        pts = [data["vertex"], data["p1"], data["p2"], g["text_point"]]
+        pts.extend(g["arc_points"])
+        return pts
     g = dimension_geometry(data)
     pts = [g["dim_start"], g["dim_end"], g["text_point"]]
     for ext in (g["ext1"], g["ext2"]):
@@ -175,3 +182,65 @@ def detach_assoc(data):
     data.pop("assoc_kind", None)
     return data
 
+def angular_measure(vertex, p1, p2):
+    """
+    Ángulo en grados [0, 360) barrido en sentido antihorario
+    desde el rayo vertex→p1 hasta el rayo vertex→p2.
+    """
+    a1 = math.degrees(math.atan2(p1.y - vertex.y, p1.x - vertex.x)) % 360.0
+    a2 = math.degrees(math.atan2(p2.y - vertex.y, p2.x - vertex.x)) % 360.0
+    return (a2 - a1) % 360.0
+
+
+def angular_geometry(data):
+    """Geometría completa de una cota angular."""
+    vertex = data["vertex"]
+    p1 = data["p1"]
+    p2 = data["p2"]
+    radius = float(data.get("radius", 15.0))
+
+    a1 = math.degrees(math.atan2(p1.y - vertex.y, p1.x - vertex.x)) % 360.0
+    extent = angular_measure(vertex, p1, p2)
+
+    r1 = math.radians(a1)
+    r2 = math.radians(a1 + extent)
+    arc_start = Point(vertex.x + radius * math.cos(r1),
+                      vertex.y + radius * math.sin(r1))
+    arc_end = Point(vertex.x + radius * math.cos(r2),
+                    vertex.y + radius * math.sin(r2))
+
+    # Arco muestreado (para render y bbox)
+    n = 32
+    arc_points = []
+    for i in range(n + 1):
+        t = math.radians(a1 + extent * i / n)
+        arc_points.append(Point(vertex.x + radius * math.cos(t),
+                                vertex.y + radius * math.sin(t)))
+
+    # Texto en el punto medio del arco
+    mid = math.radians(a1 + extent / 2.0)
+    text_point = Point(vertex.x + radius * math.cos(mid),
+                       vertex.y + radius * math.sin(mid))
+
+    return {
+        "vertex": vertex,
+        "radius": radius,
+        "a1": a1,
+        "extent": extent,
+        "arc_start": arc_start,
+        "arc_end": arc_end,
+        "arc_points": arc_points,
+        "text_point": text_point,
+        "value": extent,
+    }
+
+
+def angular_text_position(data):
+    """Posición del texto angular: punto medio del arco, empujado hacia fuera."""
+    g = angular_geometry(data)
+    mid = math.radians(g["a1"] + g["extent"] / 2.0)
+    r = g["radius"] + 3.0 * dimension_text_height(data)
+    v = g["vertex"]
+    base = Point(v.x + r * math.cos(mid), v.y + r * math.sin(mid))
+    off = data.get("text_offset") or Point(0, 0)
+    return Point(base.x + off.x, base.y + off.y)

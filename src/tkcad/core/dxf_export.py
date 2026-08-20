@@ -4,7 +4,7 @@ Mapea cada entidad del modelo a su equivalente DXF usando ezdxf.
 """
 
 import math
-from .dimension import dimension_geometry
+from .dimension import angular_geometry, angular_text_position, dimension_geometry
 
 def export_dxf(entities, path):
     """
@@ -96,9 +96,10 @@ def _add_entity(msp, doc, entity) -> bool:
             )
 
     elif kind == "dimension":
-        e = _add_dimension(msp, data)
-        if e is None:
-            return False
+        if data["dim_type"] == "angular":
+            e = _add_angular(msp, data)
+        else:
+            e = _add_dimension(msp, data)   # o como lo tengas ahora
 
     elif kind == "spline":
         e = _add_spline(msp, data)
@@ -115,6 +116,30 @@ def _add_entity(msp, doc, entity) -> bool:
 
     return True
 
+def _add_angular(msp, data):
+    g = angular_geometry(data)
+    v = g["vertex"]
+    try:
+        return msp.add_angular_dim_cra(
+            center=(v.x, v.y, 0),
+            radius=g["radius"],
+            start_angle=g["a1"],
+            end_angle=g["a1"] + g["extent"],
+        )
+    except Exception:
+        # Respaldo: geometría (2 líneas + arco + texto)
+        for endp in (g["arc_start"], g["arc_end"]):
+            msp.add_line((v.x, v.y, 0), (endp.x, endp.y, 0))
+        msp.add_arc(
+            center=(v.x, v.y, 0),
+            radius=g["radius"],
+            start_angle=g["a1"],
+            end_angle=g["a1"] + g["extent"],
+        )
+        tp = angular_text_position(data)
+        msp.add_text(f"{g['value']:.1f}°", height=data.get("text_height", 2.5))\
+           .set_placement((tp.x, tp.y, 0))
+        return None
 
 def _add_ellipse(msp, data):
     """Convierte una elipse tkCAD (rx, ry, rotación) a elipse DXF."""

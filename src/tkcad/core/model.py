@@ -113,7 +113,7 @@ class Document:
 
     def add_dimension(self, dim_type, p1=None, p2=None, center=None, p=None,
                     offset=10.0, assoc_entity_id=None, assoc_kind=None,
-                    assoc_angle=None, text_height=2.5):
+                    assoc_angle=None, text_height=2.5, vertex=None, radius=None):
         data = {
             "dim_type": dim_type,
             "offset": float(offset),
@@ -128,12 +128,17 @@ class Document:
             data["center"] = center
         if p is not None:
             data["p"] = p
+        if vertex is not None:                 # ← NUEVO (angular)
+            data["vertex"] = vertex
+        if radius is not None:                 # ← NUEVO (radio del arco)
+            data["radius"] = float(radius)
         if assoc_entity_id is not None:
             data["assoc_entity_id"] = assoc_entity_id
         if assoc_kind is not None:
             data["assoc_kind"] = assoc_kind
         if assoc_angle is not None:
             data["assoc_angle"] = float(assoc_angle)
+        
         return self.add_entity("dimension", data)
 
     def update_associative_dimensions(self):
@@ -407,11 +412,10 @@ class Document:
             )
 
         elif entity.kind == "dimension":
-            for key in ("p1", "p2", "center", "p"):
-                if key in entity.data:
-                    entity.data[key] = self._move_point(
-                        entity.data[key], dx, dy,
-                    )
+            d = entity.data
+            for key in ("p1", "p2", "center", "p", "vertex"):   # ← vertex añadido
+                if key in d:
+                    d[key] = self._move_point(d[key], dx, dy)
 
         elif entity.kind == "spline":
             entity.data["points"] = [

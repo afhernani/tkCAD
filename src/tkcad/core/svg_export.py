@@ -2,7 +2,7 @@
 
 import math
 
-from .dimension import (dimension_geometry, dimension_points,
+from .dimension import (angular_geometry, angular_text_position, dimension_geometry, dimension_points,
                         dimension_text_position, dimension_text_height)
 from .img_transform import compute_image_fit
 from .spline import eval_cubic_spline
@@ -122,6 +122,8 @@ def _entity_svg(entity, w2p, scale, color):
         ]
 
     if k == "dimension":
+        if d["dim_type"] == "angular":
+            return _angular_svg(d, w2p, scale, color)
         return _dimension_svg(d, w2p, scale, color)
 
     if k == "spline":
@@ -138,6 +140,31 @@ def _entity_svg(entity, w2p, scale, color):
 
     return []
 
+
+def _angular_svg(d, w2p, scale, color):
+    g = angular_geometry(d)
+    out = []
+
+    vx, vy = w2p(g["vertex"].x, g["vertex"].y)
+    for endp in (g["arc_start"], g["arc_end"]):
+        ex, ey = w2p(endp.x, endp.y)
+        out.append(f'<line x1="{vx:.2f}" y1="{vy:.2f}" x2="{ex:.2f}" '
+                   f'y2="{ey:.2f}" stroke="{color}" stroke-width="1"/>')
+
+    pts = " ".join(
+        f"{w2p(p.x, p.y)[0]:.2f},{w2p(p.x, p.y)[1]:.2f}"
+        for p in g["arc_points"]
+    )
+    out.append(f'<polyline points="{pts}" fill="none" stroke="{color}" '
+               f'stroke-width="1"/>')
+
+    tp = angular_text_position(d)
+    tx, ty = w2p(tp.x, tp.y)
+    fs = max(dimension_text_height(d) * scale, 4)
+    out.append(f'<text x="{tx:.2f}" y="{ty:.2f}" fill="{color}" '
+               f'font-size="{fs:.2f}" text-anchor="middle">'
+               f'{g["value"]:.1f}°</text>')
+    return out
 
 def _dimension_svg(d, w2p, scale, color):
     g = dimension_geometry(d)

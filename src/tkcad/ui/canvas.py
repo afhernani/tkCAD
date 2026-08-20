@@ -3,7 +3,7 @@ import tkinter as tk
 
 from ..core import Point
 from .snap_markers import SnapMarkerDrawer, SNAP_MARKER_KINDS
-from ..core.dimension import (dimension_geometry,
+from ..core.dimension import (angular_text_position, dimension_geometry,
                                   dimension_text_position,
                                   dimension_text_height)
 
@@ -279,6 +279,12 @@ class CadCanvas(tk.Canvas):
             # Cota: extensiones + línea de cota + flechas + texto
             # ----------------------------------------------------
             elif entity.kind == "dimension":
+                data = entity.data
+
+                if data["dim_type"] == "angular":
+                    self._draw_angular_dimension(entity, data, color)
+                    continue # salta al siguiente entity
+
                 g = dimension_geometry(entity.data)
 
                 # Líneas de extensión
@@ -366,6 +372,63 @@ class CadCanvas(tk.Canvas):
         
         # Grips
         self.grip_manager.draw_grips()
+
+    def _draw_angular_dimension(self, entity, data, color):
+        """Dibuja una cota angular: extensiones, arco, flechas y texto."""
+        g = dimension_geometry(data)
+        vertex = g["vertex"]
+
+        # --- Líneas de extensión: vértice → extremos del arco ---
+        vx, vy = self.world_to_canvas(vertex)
+        for endp in (g["arc_start"], g["arc_end"]):
+            ex, ey = self.world_to_canvas(endp)
+            item = self.create_line(vx, vy, ex, ey, fill=color)
+            self.item_to_entity[item] = entity.id
+
+        # --- Arco muestreado como polilínea ---
+        pts = [self.world_to_canvas(p) for p in g["arc_points"]]
+        if len(pts) >= 2:
+            item = self.create_line(pts, fill=color)
+            self.item_to_entity[item] = entity.id
+
+        # --- Flechas tangentes en los extremos del arco ---
+        a1 = math.radians(g["a1"])
+        a2 = math.radians(g["a1"] + g["extent"])
+        s1 = self.world_to_canvas(g["arc_start"])
+        s2 = self.world_to_canvas(g["arc_end"])
+
+        item = self._arrow_screen(s1, math.sin(a1), math.cos(a1), color)
+        self.item_to_entity[item] = entity.id
+        item = self._arrow_screen(s2, -math.sin(a2), -math.cos(a2), color)
+        self.item_to_entity[item] = entity.id
+
+        # --- Texto con el ángulo en grados ---
+        # tp = dimension_text_position(data)
+        tp = angular_text_position(data)
+        th = dimension_text_height(data)
+        tx, ty = self.world_to_canvas(tp)
+        font_px = max(int(th * self.scale), 4)
+        item = self.create_text(
+            tx, ty - font_px,
+            text=f"{g['value']:.1f}°",
+            fill=color,
+            font=("TkDefaultFont", -font_px),
+        )
+        self.item_to_entity[item] = entity.id
+
+    def _arrow_screen(self, tip, dirx, diry, color, length=10, half=3.5):
+        """Flecha rellena en coordenadas de pantalla."""
+        n = math.hypot(dirx, diry) or 1.0
+        dx, dy = dirx / n, diry / n
+        px, py = -dy, dx
+        b1 = (tip[0] - dx * length + px * half,
+              tip[1] - dy * length + py * half)
+        b2 = (tip[0] - dx * length - px * half,
+              tip[1] - dy * length - py * half)
+        return self.create_polygon(
+            [tip[0], tip[1], b1[0], b1[1], b2[0], b2[1]],
+            fill=color, outline=color,
+        )
 
     def _draw_grid(self):
         """Método para dibujar la malla de fondo en el canvas."""

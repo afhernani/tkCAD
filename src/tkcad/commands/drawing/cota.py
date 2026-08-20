@@ -14,6 +14,10 @@ class CotaState(Enum):
     PICK = auto()        # clic en entidad (modo asociativo)
     LIN_TYPE = auto()    # orientación tras elegir línea
     A_OFFSET = auto()    # offset tras elegir línea
+    ANG_VERTEX = auto()   # ← NUEVOS
+    ANG_P1 = auto()
+    ANG_P2 = auto()
+    ANG_RADIUS = auto()
 
 
 TYPE_MAP = {"H": "linear_h", "V": "linear_v", "A": "aligned"}
@@ -30,10 +34,11 @@ class CotaCommand(Command):
         self.p2 = None
         self.center = None
         self.assoc_id = None
+        self.vertex = None
 
     def start(self, ctx):
         ctx.prompt(
-            "Tipo de cota [H/V/A/R] o E=entidad asociativa:"
+            "Tipo de cota [Horizontal/Vertical/Alineada/Radio/Grados] o E=entidad asociativa:"
         )
         return None
 
@@ -54,6 +59,11 @@ class CotaCommand(Command):
                 self.dim_type = "radius"
                 self.state = CotaState.CENTER
                 ctx.prompt("Centro del arco/círculo:")
+                return CommandResult.RUNNING
+            if t == "G":
+                self.dim_type = "angular"
+                self.state = CotaState.ANG_VERTEX
+                ctx.prompt("Vértice del ángulo:")
                 return CommandResult.RUNNING
             if t in TYPE_MAP:
                 self.dim_type = TYPE_MAP[t]
@@ -161,6 +171,45 @@ class CotaCommand(Command):
             ctx.prompt("Punto en el círculo:")
             return CommandResult.RUNNING
 
+        # ---------- Modo angular ----------
+        if self.state == CotaState.ANG_VERTEX:
+            p = self._parse(ctx, text)
+            if p is None:
+                return CommandResult.RUNNING
+            self.vertex = p
+            self.state = CotaState.ANG_P1
+            ctx.prompt("Primer punto del rayo:")
+            return CommandResult.RUNNING
+
+        if self.state == CotaState.ANG_P1:
+            p = self._parse(ctx, text, self.vertex)
+            if p is None:
+                return CommandResult.RUNNING
+            self.p1 = p
+            self.state = CotaState.ANG_P2
+            ctx.prompt("Segundo punto del rayo:")
+            return CommandResult.RUNNING
+
+        if self.state == CotaState.ANG_P2:
+            p = self._parse(ctx, text, self.vertex)
+            if p is None:
+                return CommandResult.RUNNING
+            self.p2 = p
+            self.state = CotaState.ANG_RADIUS
+            ctx.prompt("Radio del arco de cota <15>:")
+            return CommandResult.RUNNING
+
+        if self.state == CotaState.ANG_RADIUS:
+            radius = self._parse_offset(ctx, text, default=15.0)
+            if radius is None:
+                return CommandResult.RUNNING
+            ctx.add_dimension(
+                "angular", vertex=self.vertex, p1=self.p1,
+                p2=self.p2, radius=radius,
+            )
+            ctx.write("Cota angular creada.")
+            return CommandResult.FINISHED
+
         if self.state == CotaState.P:
             p = self._parse(ctx, text, self.center)
             if p is None:
@@ -178,9 +227,9 @@ class CotaCommand(Command):
             ctx.write(f"Punto no válido: {ex}")
             return None
 
-    def _parse_offset(self, ctx, text):
+    def _parse_offset(self, ctx, text, default=10.0):
         if not text:
-            return 10.0
+            return default
         try:
             return parse_number(text)
         except ValueError:
@@ -191,6 +240,7 @@ class CotaCommand(Command):
         return self.state in (
             CotaState.P1, CotaState.P2, CotaState.CENTER,
             CotaState.P, CotaState.PICK,
+            CotaState.ANG_VERTEX, CotaState.ANG_P1, CotaState.ANG_P2,
         )
 
     def get_point_base(self):
@@ -198,10 +248,12 @@ class CotaCommand(Command):
             return self.p1
         if self.state == CotaState.P:
             return self.center
+        if self.state in (CotaState.ANG_P1, CotaState.ANG_P2):
+            return self.vertex
         return None
 
     def get_completions(self, ctx, text: str):
         if self.state == CotaState.TYPE:
             t = text.upper()
-            return [o for o in ("H", "V", "A", "R", "E") if o.startswith(t)]
+            return [o for o in ("H", "V", "A", "R", "G", "E") if o.startswith(t)]
         return []

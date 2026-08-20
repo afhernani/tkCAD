@@ -1,7 +1,7 @@
 import math
 
 from ..core import Point
-from ..core.dimension import (dimension_geometry, offset_from_point,
+from ..core.dimension import (angular_text_position, dimension_geometry, offset_from_point,
                               detach_assoc, dimension_text_position)
 
 class GripManager:
@@ -168,12 +168,11 @@ class GripManager:
             elif entity.kind == "dimension":
                 data = entity.data
 
-                for key in ("p1", "p2", "center", "p"):
+                for key in ("p1", "p2", "center", "p", "vertex"):   # ← vertex
                     if key in data:
                         x, y = self.canvas.world_to_canvas(data[key])
                         self.create_grip(x, y, entity.id, f"dim_{key}")
 
-                # Grip de offset (mover la línea de cota) solo en lineales
                 if data["dim_type"] in ("linear_h", "linear_v", "aligned"):
                     g = dimension_geometry(data)
                     mid = Point(
@@ -182,9 +181,17 @@ class GripManager:
                     )
                     x, y = self.canvas.world_to_canvas(mid)
                     self.create_grip(x, y, entity.id, "dim_offset")
+                elif data["dim_type"] == "angular":
+                    g = dimension_geometry(data)
+                    mid = g["arc_points"][len(g["arc_points"]) // 2]
+                    x, y = self.canvas.world_to_canvas(mid)
+                    self.create_grip(x, y, entity.id, "dim_radius")
 
-                # Grip para reposicionar el texto  ← AÑADE ESTO
-                tp = dimension_text_position(data)
+                # Grip de texto (posición según tipo)
+                if data["dim_type"] == "angular":
+                    tp = angular_text_position(data)
+                else:
+                    tp = dimension_text_position(data)
                 x, y = self.canvas.world_to_canvas(tp)
                 self.create_grip(x, y, entity.id, "dim_text")
 
@@ -468,6 +475,14 @@ class GripManager:
             elif t == "dim_text":
                 base = dimension_geometry(entity.data)["text_point"]
                 entity.data["text_offset"] = Point(p.x - base.x, p.y - base.y)
+            elif t == "dim_vertex":
+                detach_assoc(entity.data)
+                entity.data["vertex"] = p
+            elif t == "dim_radius":
+                v = entity.data["vertex"]
+                r = math.hypot(p.x - v.x, p.y - v.y)
+                if r > 0.01:
+                    entity.data["radius"] = r
 
         # ----------------------------------------------------
         # Spline: mover el punto de control i
@@ -537,6 +552,8 @@ class GripManager:
                 return data.get("p1")
             if grip["type"] == "dim_p":
                 return data.get("center")
+            if grip["type"] == "dim_radius":
+                return data.get("vertex")
 
         elif entity.kind == "spline":
             if grip["type"].startswith("spline_pt_"):

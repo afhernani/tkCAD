@@ -2,7 +2,7 @@
 
 import math
 
-from .dimension import dimension_geometry
+from .dimension import angular_geometry, angular_text_position, dimension_geometry, dimension_text_height
 from .img_transform import compute_image_fit
 from .svg_export import _all_bbox   # reutilizamos el bbox del exportador SVG
 from .spline import eval_cubic_spline
@@ -124,6 +124,9 @@ def _sampled_ellipse(d, w2p, n=64):
 
 
 def _draw_dimension(draw, d, w2p, scale, color):
+    if d["dim_type"] == "angular":
+        _draw_angular(draw, d, w2p, scale, color)
+        return
     g = dimension_geometry(d)
 
     for ext in (g["ext1"], g["ext2"]):
@@ -139,6 +142,25 @@ def _draw_dimension(draw, d, w2p, scale, color):
     fs = max(2.5 * scale, 6)
     prefix = {"radius": "R", "diameter": "Ø"}.get(d["dim_type"], "")
     draw.text((tx, ty - fs), f"{prefix}{g['value']:.2f}",
+              fill=color, font=_get_font(fs))
+
+
+def _draw_angular(draw, d, w2p, scale, color):
+    g = angular_geometry(d)
+
+    v = w2p(g["vertex"].x, g["vertex"].y)
+    for endp in (g["arc_start"], g["arc_end"]):
+        e = w2p(endp.x, endp.y)
+        draw.line([v, e], fill=color, width=1)
+
+    pts = [w2p(p.x, p.y) for p in g["arc_points"]]
+    if len(pts) >= 2:
+        draw.line(pts, fill=color, width=1)
+
+    tp = angular_text_position(d)
+    tx, ty = w2p(tp.x, tp.y)
+    fs = max(dimension_text_height(d) * scale, 6)
+    draw.text((tx, ty - fs), f"{g['value']:.1f}°",
               fill=color, font=_get_font(fs))
 
 
