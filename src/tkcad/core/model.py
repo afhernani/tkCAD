@@ -1771,4 +1771,84 @@ class Document:
             return False, f"Campo no editable: {field}"
 
         self.notify_change()
-        return True, "OK"    
+        return True, "OK" 
+
+    # ----------------------------------------------------
+    # Matrices (arrays)
+    # ----------------------------------------------------
+    def _clone_entity(self, entity):
+        """Duplica una entidad conservando capa. Devuelve la nueva."""
+        data = copy.deepcopy(entity.data)
+        new = self.add_entity(entity.kind, data)
+        new.layer = entity.layer
+        return new
+
+    def _map_entity_points(self, entity, fn):
+        """Aplica fn(Point)->Point a todos los puntos de definición."""
+        d = entity.data
+        k = entity.kind
+        if k == "line":
+            d["start"] = fn(d["start"])
+            d["end"] = fn(d["end"])
+        elif k in ("polyline", "polygon", "spline"):
+            d["points"] = [fn(p) for p in d["points"]]
+        elif k in ("circle", "arc", "ellipse"):
+            d["center"] = fn(d["center"])
+        elif k == "text":
+            d["position"] = fn(d["position"])
+        elif k == "dimension":
+            for key in ("p1", "p2", "center", "p", "vertex"):
+                if key in d:
+                    d[key] = fn(d[key])
+
+    def array_rectangular(self, ids, rows, cols, dx, dy):
+        """Crea una matriz rectangular de la selección. Devuelve ids nuevos."""
+        new_ids = []
+        originals = [self.get_entity_by_id(i) for i in ids]
+        originals = [e for e in originals if e is not None]
+        for r in range(rows):
+            for c in range(cols):
+                if r == 0 and c == 0:
+                    continue
+                for orig in originals:
+                    copy = self._clone_entity(orig)
+                    self._map_entity_points(
+                        copy,
+                        lambda p, ox=c * dx, oy=r * dy:
+                            Point(p.x + ox, p.y + oy),
+                    )
+                    new_ids.append(copy.id)
+        self.notify_change()
+        return new_ids
+
+    def array_polar(self, ids, center, count, total_angle=360.0):
+        """Crea una matriz polar de la selección. Devuelve ids nuevos."""
+        new_ids = []
+        originals = [self.get_entity_by_id(i) for i in ids]
+        originals = [e for e in originals if e is not None]
+        step = total_angle / max(count, 1)
+        for i in range(1, count):
+            ang = math.radians(step * i)
+            ca, sa = math.cos(ang), math.sin(ang)
+            for orig in originals:
+                copy = self._clone_entity(orig)
+
+                def rot(p):
+                    dx, dy = p.x - center.x, p.y - center.y
+                    return Point(center.x + dx * ca - dy * sa,
+                                 center.y + dx * sa + dy * ca)
+
+                self._map_entity_points(copy, rot)
+                # Orientación propia de arcos y elipses
+                if copy.kind == "arc":
+                    copy.data["start_angle"] = (
+                        copy.data["start_angle"] + math.degrees(ang)
+                    ) % 360.0
+                elif copy.kind == "ellipse":
+                    copy.data["rotation"] = (
+                        copy.data.get("rotation", 0.0) + math.degrees(ang)
+                    ) % 360.0
+                new_ids.append(copy.id)
+        self.notify_change()
+        return new_ids
+

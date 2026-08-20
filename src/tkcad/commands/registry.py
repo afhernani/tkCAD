@@ -28,6 +28,7 @@ from .modify.escalar import ScaleCommand
 from .modify.simetria import MirrorCommand
 from .modify.recortar import TrimCommand
 from .modify.extender import ExtendCommand
+from .modify.matriz import MatrizCommand
 
 # File
 from .file.guardar import SaveCommand, SaveAsCommand
@@ -74,6 +75,7 @@ ALL_COMMANDS: List[Type[Command]] = [
     MirrorCommand,
     TrimCommand,
     ExtendCommand,
+    MatrizCommand,
     # File
     SaveCommand,
     SaveAsCommand,
