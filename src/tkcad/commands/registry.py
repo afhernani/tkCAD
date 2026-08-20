@@ -29,6 +29,8 @@ from .modify.simetria import MirrorCommand
 from .modify.recortar import TrimCommand
 from .modify.extender import ExtendCommand
 from .modify.matriz import MatrizCommand
+from .modify.bloque import BloqueCommand
+from .modify.descomponer import DescomponerCommand
 
 # File
 from .file.guardar import SaveCommand, SaveAsCommand
@@ -76,6 +78,8 @@ ALL_COMMANDS: List[Type[Command]] = [
     TrimCommand,
     ExtendCommand,
     MatrizCommand,
+    BloqueCommand,
+    DescomponerCommand,
     # File
     SaveCommand,
     SaveAsCommand,

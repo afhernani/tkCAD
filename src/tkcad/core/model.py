@@ -27,6 +27,10 @@ class Document:
         self.history_limit = 100
         self._pending_snapshot = None
         self._mutated = False
+
+        self.block_names = {}      # block_id -> nombre
+        self._next_block_id = 1
+
         # si hay cambios en el documento.
         self.modified = False
 
@@ -308,12 +312,27 @@ class Document:
         layer = self._layer_of(entity)
         if not layer.visible or layer.locked:
             return False
-        entity.selected = not entity.selected
+
+        # Bloques: el bloque entero se conmuta según la entidad clicada
+        # (si estaba sin seleccionar → se selecciona todo el bloque;
+        #  si estaba seleccionada → se quita todo el bloque)
+        new_state = not entity.selected
+        for i in self._expand_blocks([entity_id]):
+            e = self.get_entity_by_id(i)
+            if e is None:
+                continue
+            lay = self._layer_of(e)
+            if not lay.visible or lay.locked:
+                continue
+            e.selected = new_state
+
+        # entity.selected = not entity.selected
         if notify:
             self.notify_change()
         return True
 
     def set_selection_ids(self, ids):
+        ids = self._expand_blocks(ids)
         ids_set = set(ids)
         for entity in self.entities:
             layer = self._layer_of(entity)
@@ -1851,4 +1870,58 @@ class Document:
                 new_ids.append(copy.id)
         self.notify_change()
         return new_ids
+
+    # ----------------------------------------------------
+    # Bloques (nivel 1: grupos)
+    # ----------------------------------------------------
+    def make_block(self, ids, name):
+        """Agrupa las entidades dadas en un bloque. Devuelve el block_id."""
+        ids = [i for i in ids if self.get_entity_by_id(i) is not None]
+        if not ids:
+            return None
+        bid = self._next_block_id
+        self._next_block_id += 1
+        self.block_names[bid] = name
+        for i in ids:
+            self.get_entity_by_id(i).block_id = bid
+        self.notify_change()
+        return bid
+
+    def block_siblings(self, entity_id):
+        """Ids de todas las entidades del mismo bloque (incluida la dada)."""
+        e = self.get_entity_by_id(entity_id)
+        bid = getattr(e, "block_id", None) if e is not None else None
+        if bid is None:
+            return [entity_id]
+        return [o.id for o in self.entities
+                if getattr(o, "block_id", None) == bid]
+
+    def explode_block(self, ids):
+        """Rompe el bloque de las entidades dadas. Devuelve nº bloques rotos."""
+        broken = 0
+        done = set()
+        for i in ids:
+            e = self.get_entity_by_id(i)
+            bid = getattr(e, "block_id", None) if e is not None else None
+            if bid is None or bid in done:
+                continue
+            done.add(bid)
+            for o in self.entities:
+                if getattr(o, "block_id", None) == bid:
+                    o.block_id = None
+            self.block_names.pop(bid, None)
+            broken += 1
+        if broken:
+            self.notify_change()
+        return broken
+
+    def _expand_blocks(self, ids):
+        """Amplía una lista de ids con sus hermanos de bloque."""
+        out, seen = [], set()
+        for i in ids:
+            for s in self.block_siblings(i):
+                if s not in seen:
+                    seen.add(s)
+                    out.append(s)
+        return out
 

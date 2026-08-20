@@ -44,8 +44,8 @@ class ProjectIO:
     # --------------------------------------------------------
     # Encode / decode de entidades
     # --------------------------------------------------------
-    def entity_to_dict(self, entity) -> dict:
-        return {
+    def entity_to_dict(self, entity, block_names=None) -> dict:
+        d = {
             "id": entity.id,
             "kind": entity.kind,
             "layer":entity.layer,
@@ -54,6 +54,16 @@ class ProjectIO:
                 for key, value in entity.data.items()
             },
         }
+        # --- persistencia de bloques ---
+        bid = getattr(entity, "block_id", None)
+        if bid is not None:
+            d["block_id"] = bid
+            if block_names:
+                d["block_name"] = block_names.get(bid, f"BLOQUE_{bid}")
+
+        return d
+
+        
 
     def entity_from_dict(self, data) -> Entity:
         entity_id = int(data["id"])
@@ -63,13 +73,19 @@ class ProjectIO:
             key: self.decode_value(value)
             for key, value in raw_data.items()
         }
-        return Entity(
+        entity = Entity(
             id=entity_id,
             kind=kind,
             data=decoded_data,
             selected=False,
             layer=str(data.get("layer","0")),
         )
+        # --- restauración de bloques ---
+        if "block_id" in data:
+            entity.block_id = data["block_id"]
+            entity.block_name = data.get("block_name")   # transitorio
+
+        return entity
 
     # --------------------------------------------------------
     # Proyecto completo <-> JSON
@@ -91,7 +107,7 @@ class ProjectIO:
             locked=bool(data.get("locked", False)),
         )
 
-    def to_json(self, entities, next_entity_id, layers=None, current_layer="0") -> str:
+    def to_json(self, entities, next_entity_id, layers=None, current_layer="0", block_names=None) -> str:
         if layers is None:
             layers = {"0": Layer(name="0")}
         project_data = {
@@ -103,7 +119,7 @@ class ProjectIO:
                 for layer in layers.values()
             ],
             "entities": [
-                self.entity_to_dict(entity)
+                self.entity_to_dict(entity, block_names)
                 for entity in entities
             ],
         }
@@ -136,16 +152,17 @@ class ProjectIO:
         if current_layer not in layers:
             current_layer = "0"
         return entities, next_id, layers, current_layer
+    
     # --------------------------------------------------------
     # Acceso a disco (sin diálogos)
     # --------------------------------------------------------
-    def save(self, path, entities, next_entity_id, layers=None, current_layer="0") -> Path:
+    def save(self, path, entities, next_entity_id, layers=None, current_layer="0", block_names=None) -> Path:
         path = Path(path).expanduser()
         if path.suffix == "":
             path = path.with_suffix(".json")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
-            self.to_json(entities, next_entity_id, layers, current_layer),
+            self.to_json(entities, next_entity_id, layers, current_layer, block_names),
             encoding="utf-8",
         )
         return path
