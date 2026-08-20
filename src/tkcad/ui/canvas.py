@@ -438,6 +438,11 @@ class CadCanvas(tk.Canvas):
         if self.app.grid_size <= 0:
             return
 
+        # Cortocircuito: vista corrupta → no dibujar malla
+        if not (math.isfinite(self.scale) and self.scale > 1e-9
+                and math.isfinite(self.pan_x) and math.isfinite(self.pan_y)):
+            return
+
         w = self.winfo_width()
         h = self.winfo_height()
 
@@ -855,6 +860,13 @@ class CadCanvas(tk.Canvas):
     # --------------------------------------------------------
     def zoom_at(self, cx, cy, factor):
         world = self.canvas_to_world(cx, cy)
+        # Si la vista está corrupta, reinicia a valores sanos
+        if not all(math.isfinite(v) for v in (world.x, world.y, self.scale)):
+            self.scale = 1.0
+            self.pan_x = 0.0
+            self.pan_y = 0.0
+            world = self.canvas_to_world(cx, cy)
+
         new_scale = min(max(self.scale * factor, 0.02), 50.0)
         if new_scale == self.scale:
             return
@@ -873,6 +885,13 @@ class CadCanvas(tk.Canvas):
         if bbox is None:
             return
         min_x, min_y, max_x, max_y = bbox
+
+        # Protección contra bbox degenerado (vacío o con NaN/inf)
+        if not all(math.isfinite(v) for v in bbox):
+            # Revertir el push: la vista no cambia
+            self._pop_view_silent()
+            return
+
         w = max(max_x - min_x, 1e-9)
         h_world = max(max_y - min_y, 1e-9)
         avail_w = max(self.winfo_width() - 2 * self.margin, 1)
@@ -883,6 +902,12 @@ class CadCanvas(tk.Canvas):
         self.pan_x = center_x - (self.winfo_width() / 2 - self.margin) / self.scale
         self.pan_y = center_y - (self.winfo_height() / 2 - self.margin) / self.scale
         self.redraw()
+
+    def _pop_view_silent(self):
+        """Quita la última vista guardada sin restaurarla (para reverts)."""
+        if self.view_back:
+            self.view_back.pop()
+        self._last_view_key = None
 
     def _on_wheel(self, event):
         self._push_view("wheel")
@@ -906,6 +931,7 @@ class CadCanvas(tk.Canvas):
 
     def _on_pan_release(self, event):
         self.pan_last = None
+        self.app._update_command_cursor()
 
     # historial + zoom a rect
 
