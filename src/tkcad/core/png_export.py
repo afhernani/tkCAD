@@ -2,7 +2,7 @@
 
 import math
 
-from .dimension import angular_geometry, angular_text_position, dimension_geometry, dimension_text_height
+from .dimension import angular_geometry, angular_ray_ends, angular_text_position, dimension_geometry, dimension_text_height
 from .img_transform import compute_image_fit
 from .svg_export import _all_bbox   # reutilizamos el bbox del exportador SVG
 from .spline import eval_cubic_spline
@@ -149,7 +149,7 @@ def _draw_angular(draw, d, w2p, scale, color):
     g = angular_geometry(d)
 
     v = w2p(g["vertex"].x, g["vertex"].y)
-    for endp in (g["arc_start"], g["arc_end"]):
+    for endp in angular_ray_ends(d):                 # ← mismo cambio
         e = w2p(endp.x, endp.y)
         draw.line([v, e], fill=color, width=1)
 

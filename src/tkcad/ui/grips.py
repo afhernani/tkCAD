@@ -1,7 +1,7 @@
 import math
 
 from ..core import Point
-from ..core.dimension import (angular_text_position, dimension_geometry, offset_from_point,
+from ..core.dimension import (angular_geometry, angular_text_position, dimension_geometry, offset_from_point,
                               detach_assoc, dimension_text_position)
 
 class GripManager:
@@ -172,7 +172,7 @@ class GripManager:
                     if key in data:
                         x, y = self.canvas.world_to_canvas(data[key])
                         self.create_grip(x, y, entity.id, f"dim_{key}")
-
+                # grip de offsets (mover la linea de cota) solo en lineales
                 if data["dim_type"] in ("linear_h", "linear_v", "aligned"):
                     g = dimension_geometry(data)
                     mid = Point(
@@ -470,11 +470,6 @@ class GripManager:
             elif t == "dim_p":
                 detach_assoc(entity.data)
                 entity.data["p"] = p
-            elif t == "dim_offset":
-                entity.data["offset"] = offset_from_point(entity.data, p)
-            elif t == "dim_text":
-                base = dimension_geometry(entity.data)["text_point"]
-                entity.data["text_offset"] = Point(p.x - base.x, p.y - base.y)
             elif t == "dim_vertex":
                 detach_assoc(entity.data)
                 entity.data["vertex"] = p
@@ -483,6 +478,16 @@ class GripManager:
                 r = math.hypot(p.x - v.x, p.y - v.y)
                 if r > 0.01:
                     entity.data["radius"] = r
+            elif t == "dim_offset":
+                entity.data["offset"] = offset_from_point(entity.data, p)
+            elif t == "dim_text":
+                if entity.data.get("dim_type") == "angular":
+                    base = angular_geometry(entity.data)["arc_points"][
+                        len(angular_geometry(entity.data)["arc_points"]) // 2
+                    ]
+                else:
+                    base = dimension_geometry(entity.data)["text_point"]
+                entity.data["text_offset"] = Point(p.x - base.x, p.y - base.y)
 
         # ----------------------------------------------------
         # Spline: mover el punto de control i

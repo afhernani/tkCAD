@@ -3,7 +3,7 @@ import tkinter as tk
 
 from ..core import Point
 from .snap_markers import SnapMarkerDrawer, SNAP_MARKER_KINDS
-from ..core.dimension import (angular_text_position, dimension_geometry,
+from ..core.dimension import (angular_ray_ends, angular_text_position, dimension_geometry,
                                   dimension_text_position,
                                   dimension_text_height)
 
@@ -378,9 +378,9 @@ class CadCanvas(tk.Canvas):
         g = dimension_geometry(data)
         vertex = g["vertex"]
 
-        # --- Líneas de extensión: vértice → extremos del arco ---
+        # --- Líneas de extensión: vértice → puntos del rayo ---
         vx, vy = self.world_to_canvas(vertex)
-        for endp in (g["arc_start"], g["arc_end"]):
+        for endp in angular_ray_ends(data):          # ← antes: (g["arc_start"], g["arc_end"])
             ex, ey = self.world_to_canvas(endp)
             item = self.create_line(vx, vy, ex, ey, fill=color)
             self.item_to_entity[item] = entity.id

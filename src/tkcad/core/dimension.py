@@ -244,3 +244,21 @@ def angular_text_position(data):
     base = Point(v.x + r * math.cos(mid), v.y + r * math.sin(mid))
     off = data.get("text_offset") or Point(0, 0)
     return Point(base.x + off.x, base.y + off.y)
+
+def angular_ray_ends(data):
+    """Extremos de las líneas de extensión: p1/p2, extendidos
+    como mínimo hasta el radio del arco."""
+    g = angular_geometry(data)
+    v = g["vertex"]
+    ends = []
+    for key in ("p1", "p2"):
+        t = data[key]
+        dx = t.x - v.x
+        dy = t.y - v.y
+        d = math.hypot(dx, dy)
+        if d < 1e-9:
+            ends.append(Point(v.x, v.y))
+            continue
+        L = max(d, g["radius"])
+        ends.append(Point(v.x + dx / d * L, v.y + dy / d * L))
+    return ends

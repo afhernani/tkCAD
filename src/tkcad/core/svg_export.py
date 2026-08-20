@@ -2,7 +2,7 @@
 
 import math
 
-from .dimension import (angular_geometry, angular_text_position, dimension_geometry, dimension_points,
+from .dimension import (angular_geometry, angular_ray_ends, angular_text_position, dimension_geometry, dimension_points,
                         dimension_text_position, dimension_text_height)
 from .img_transform import compute_image_fit
 from .spline import eval_cubic_spline
@@ -146,7 +146,7 @@ def _angular_svg(d, w2p, scale, color):
     out = []
 
     vx, vy = w2p(g["vertex"].x, g["vertex"].y)
-    for endp in (g["arc_start"], g["arc_end"]):
+    for endp in angular_ray_ends(d):                 # ← mismo cambio
         ex, ey = w2p(endp.x, endp.y)
         out.append(f'<line x1="{vx:.2f}" y1="{vy:.2f}" x2="{ex:.2f}" '
                    f'y2="{ey:.2f}" stroke="{color}" stroke-width="1"/>')
