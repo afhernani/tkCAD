@@ -31,6 +31,8 @@ from .modify.extender import ExtendCommand
 from .modify.matriz import MatrizCommand
 from .modify.bloque import BloqueCommand
 from .modify.descomponer import DescomponerCommand
+from .modify.defbloque import DefBloqueCommand
+from .modify.insertar import InsertarCommand
 
 # File
 from .file.guardar import SaveCommand, SaveAsCommand
@@ -80,6 +82,8 @@ ALL_COMMANDS: List[Type[Command]] = [
     MatrizCommand,
     BloqueCommand,
     DescomponerCommand,
+    DefBloqueCommand,
+    InsertarCommand,
     # File
     SaveCommand,
     SaveAsCommand,
@@ -115,3 +119,4 @@ def register_all(manager) -> None:
     """Registra todos los comandos en un CommandLineManager."""
     for command_class in ALL_COMMANDS:
         manager.register(command_class)
+        # print("REG:", command_class.__name__, getattr(command_class, "name", None))

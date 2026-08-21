@@ -7,6 +7,8 @@ para redibujar.
 import copy, math
 from typing import List
 
+from tkcad.core.dimension import dimension_points
+
 from .entity import Entity
 from .point import Point
 from .types import EPS, TARGET_KIND_MAP
@@ -30,6 +32,7 @@ class Document:
 
         self.block_names = {}      # block_id -> nombre
         self._next_block_id = 1
+        self.block_defs = {}      # nivel 2: nombre bloque ->{base,entities}
 
         # si hay cambios en el documento.
         self.modified = False
@@ -441,6 +444,11 @@ class Document:
                 self._move_point(p, dx, dy)
                 for p in entity.data["points"]
             ]
+
+        elif entity.kind == "insert":
+            entity.data["position"] = self._move_point(
+                entity.data["position"], dx, dy,
+            )
 
 
     def move_selected(self, dx: float, dy: float):
@@ -1529,6 +1537,16 @@ class Document:
             xs = [p.x for p in pts]
             ys = [p.y for p in pts]
             return (min(xs), min(ys), max(xs), max(ys))
+
+        elif entity.kind == "insert":
+            pts = []
+            for kind, data, layer in self.insert_world_entities(entity):
+                pts.extend(self._data_points_for_bbox(kind, data))
+            if not pts:
+                return None
+            xs = [p.x for p in pts]
+            ys = [p.y for p in pts]
+            return (min(xs), min(ys), max(xs), max(ys))
         
         return None
 
@@ -1932,3 +1950,142 @@ class Document:
                 copy.block_id = bid_map[bid]
             copies.append(copy)
         return copies
+
+    # ----------------------------------------------------
+    # Bloques nivel 2: definiciones + inserciones
+    # ----------------------------------------------------
+    def define_block_def(self, name, ids, base):
+        """Crea una definición de bloque desde la selección.
+        Elimina las entidades originales (estilo AutoCAD)."""
+        originals = [self.get_entity_by_id(i) for i in ids]
+        originals = [e for e in originals if e is not None]
+        if not originals:
+            return False
+        ents = [(e.kind, copy.deepcopy(e.data), e.layer) for e in originals]
+        # --- NUEVO: radio de referencia para los grips de rotación/escala ---
+        # distancia máxima desde la base a cualquier punto de la definición
+        maxr = 0.0
+        for kind, data, layer in ents:
+            for p in self._data_points_for_bbox(kind, data):
+                maxr = max(maxr, math.hypot(p.x - base.x, p.y - base.y))
+
+        self.block_defs[name] = {
+            "base": copy.deepcopy(base),
+            "entities": ents,
+            "radius": max(maxr, 1e-6),          # ← clave nueva
+        }
+        for e in originals:
+            self.entities.remove(e)
+        self.notify_change()
+        return True
+
+    def _data_points_for_bbox(self, kind, d):
+        """Puntos representativos de un data transformado (para bbox)"""
+        if kind == "line":
+            return [d["start"], d["end"]]
+        if kind in ("polyline", "polygon", "spline"):
+            return list(d["points"])
+        if kind in ("circle", "arc"):
+            c, r = d["center"], d["radius"]
+            return [Point(c.x - r, c.y - r), Point(c.x + r, c.y + r)]
+        if kind == "ellipse":
+            c = d["center"]
+            rx, ry = d["radius_x"], d["radius_y"]
+            return [Point(c.x - rx, c.y - ry), Point(c.x + rx, c.y + ry)]
+        if kind == "text":
+            return [d["position"]]
+        if kind == "dimension":
+            return dimension_points(d)
+        return []
+
+    def _transform_block_data(self, kind, data, base, position,
+                              rotation, scale):
+        a = math.radians(rotation)
+        ca, sa = math.cos(a), math.sin(a)
+
+        def xf(p):
+            dx, dy = (p.x - base.x) * scale, (p.y - base.y) * scale
+            return Point(position.x + dx * ca - dy * sa,
+                         position.y + dx * sa + dy * ca)
+
+        d = copy.deepcopy(data)
+        if kind == "line":
+            d["start"] = xf(d["start"])
+            d["end"] = xf(d["end"])
+        elif kind in ("polyline", "polygon", "spline"):
+            d["points"] = [xf(p) for p in d["points"]]
+        elif kind in ("circle", "arc"):
+            d["center"] = xf(d["center"])
+            d["radius"] = d["radius"] * scale
+            if kind == "arc":
+                d["start_angle"] = (d["start_angle"] + rotation) % 360.0
+        elif kind == "ellipse":
+            d["center"] = xf(d["center"])
+            d["radius_x"] *= scale
+            d["radius_y"] *= scale
+            d["rotation"] = (d.get("rotation", 0.0) + rotation) % 360.0
+        elif kind == "text":
+            d["position"] = xf(d["position"])
+            d["height"] = d["height"] * scale
+        elif kind == "dimension":
+            for key in ("p1", "p2", "center", "p", "vertex"):
+                if key in d:
+                    d[key] = xf(d[key])
+            d["offset"] = d.get("offset", 10.0) * scale
+        return d
+
+    def insert_world_entities(self, entity):
+        """Devuelve [(kind, data_en_mundo, layer)] de un insert."""
+        d = entity.data
+        defn = self.block_defs.get(d["name"])
+        if defn is None:
+            return []
+        base = defn["base"]
+        out = []
+        for kind, data, layer in defn["entities"]:
+            out.append((
+                kind,
+                self._transform_block_data(
+                    kind, data, base,
+                    d["position"], d.get("rotation", 0.0), d.get("scale", 1.0),
+                ),
+                layer,
+            ))
+        return out
+
+    def insert_block(self, name, position, rotation=0.0, scale=1.0):
+        """Inserta un bloque definido. Devuelve la entidad insert."""
+        if name not in self.block_defs:
+            return None
+        return self.add_entity("insert", {
+            "name": name,
+            "position": position,
+            "rotation": float(rotation),
+            "scale": float(scale),
+        })
+
+    def explode_insert(self, insert_id):
+        """Convierte un insert en entidades reales. Devuelve ids nuevos."""
+        entity = self.get_entity_by_id(insert_id)
+        if entity is None or entity.kind != "insert":
+            return []
+        new_ids = []
+        for kind, data, layer in self.insert_world_entities(entity):
+            new = self.add_entity(kind, data, notify=False)
+            new.layer = layer
+            new_ids.append(new.id)
+        self.entities.remove(entity)
+        self.notify_change()
+        return new_ids
+
+    def insert_grip_anchors(self, entity):
+        """Devuelve (punto_rot, punto_scale) de un insert."""
+        d = entity.data
+        defn = self.block_defs.get(d["name"])
+        r = (defn.get("radius", 10.0) if defn else 10.0) * d.get("scale", 1.0)
+        a = math.radians(d.get("rotation", 0.0))
+        ca, sa = math.cos(a), math.sin(a)
+        pos = d["position"]
+        rot_p = Point(pos.x - r * sa, pos.y + r * ca)    # eje local +Y
+        scl_p = Point(pos.x + r * ca, pos.y + r * sa)    # eje local +X
+        return rot_p, scl_p

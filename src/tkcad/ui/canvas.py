@@ -339,7 +339,9 @@ class CadCanvas(tk.Canvas):
                 if len(screen_pts) >= 2:
                     item = self.create_line(screen_pts, fill=color)
                     self.item_to_entity[item] = entity.id
-
+            
+            elif entity.kind == "insert":
+                self._draw_insert(entity, color)
 
         # ----------------------------------------------------
         # Vista previa opcional
@@ -372,6 +374,89 @@ class CadCanvas(tk.Canvas):
         
         # Grips
         self.grip_manager.draw_grips()
+
+
+    def _draw_insert(self, entity, color):
+        """Dibuja un insert expandiendo su definición transformada."""
+        tag = f"entity_{entity.id}"
+        for kind, data, layer in self.app.insert_world_entities(entity):
+            if kind == "line":
+                x1, y1 = self.world_to_canvas(data["start"])
+                x2, y2 = self.world_to_canvas(data["end"])
+                item = self.create_line(x1, y1, x2, y2, fill=color,
+                                        width=2, tags=tag)
+                self.item_to_entity[item] = entity.id
+
+            elif kind in ("polyline", "polygon"):
+                points = data["points"]
+                if kind == "polygon" and len(points) >= 3:
+                    points = list(points) + [points[0]]
+                coords = []
+                for p in points:
+                    coords.extend(self.world_to_canvas(p))
+                if len(coords) >= 4:
+                    item = self.create_line(*coords, fill=color,
+                                            width=2, tags=tag)
+                    self.item_to_entity[item] = entity.id
+
+            elif kind == "circle":
+                cx, cy = self.world_to_canvas(data["center"])
+                r_px = self.world_to_canvas_length(data["radius"])
+                item = self.create_oval(cx - r_px, cy - r_px,
+                                        cx + r_px, cy + r_px,
+                                        outline=color, width=2, tags=tag)
+                self.item_to_entity[item] = entity.id
+
+            elif kind == "arc":
+                cx, cy = self.world_to_canvas(data["center"])
+                r_px = self.world_to_canvas_length(data["radius"])
+                item = self.create_arc(cx - r_px, cy - r_px,
+                                       cx + r_px, cy + r_px,
+                                       start=data["start_angle"],
+                                       extent=data["extent"],
+                                       style="arc", outline=color,
+                                       width=2, tags=tag)
+                self.item_to_entity[item] = entity.id
+
+            elif kind == "ellipse":
+                c = data["center"]
+                rx = float(data["radius_x"])
+                ry = float(data["radius_y"])
+                rot = math.radians(data.get("rotation", 0.0))
+                cos_r, sin_r = math.cos(rot), math.sin(rot)
+                coords = []
+                for i in range(64):
+                    t = 2.0 * math.pi * i / 64
+                    x = rx * math.cos(t)
+                    y = ry * math.sin(t)
+                    wp = Point(c.x + x * cos_r - y * sin_r,
+                               c.y + x * sin_r + y * cos_r)
+                    coords.extend(self.world_to_canvas(wp))
+                if len(coords) >= 6:
+                    item = self.create_polygon(*coords, outline=color,
+                                               fill="", smooth=True,
+                                               width=2, tags=tag)
+                    self.item_to_entity[item] = entity.id
+
+            elif kind == "text":
+                x, y = self.world_to_canvas(data["position"])
+                font_px = max(int(self.world_to_canvas_length(data["height"])), 4)
+                item = self.create_text(x, y, text=data["content"],
+                                        fill=color, anchor="center",
+                                        font=("TkDefaultFont", -font_px))
+                self.item_to_entity[item] = entity.id
+
+            elif kind == "spline":
+                from ..core.spline import eval_cubic_spline
+                curve = eval_cubic_spline(
+                    data["points"], samples_per_segment=30,
+                    closed=data.get("closed", False),
+                )
+                pts = [self.world_to_canvas(p) for p in curve]
+                if len(pts) >= 2:
+                    item = self.create_line(pts, fill=color)
+                    self.item_to_entity[item] = entity.id
+
 
     def _draw_angular_dimension(self, entity, data, color):
         """Dibuja una cota angular: extensiones, arco, flechas y texto."""

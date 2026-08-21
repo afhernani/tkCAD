@@ -216,6 +216,18 @@ class GripManager:
                 hx, hy = self.canvas.world_to_canvas(h_point)
                 self.create_grip(hx, hy, entity.id, "text_height")
 
+            # ----------------------------------------------------
+            # INSERT: grip de posición y grip de altura
+            # ----------------------------------------------------
+
+            elif entity.kind == "insert":
+                x, y = self.canvas.world_to_canvas(entity.data["position"])
+                self.create_grip(x, y, entity.id, "ins_pos")
+                rot_p, scl_p = self.app.insert_grip_anchors(entity)
+                x, y = self.canvas.world_to_canvas(rot_p)
+                self.create_grip(x, y, entity.id, "ins_rot")
+                x, y = self.canvas.world_to_canvas(scl_p)
+                self.create_grip(x, y, entity.id, "ins_scale")
             
 
     def create_mid_grip(self, x: float, y: float, entity_id: int, segment_index: int):
@@ -497,6 +509,24 @@ class GripManager:
                 idx = int(grip["type"].split("_")[-1])
                 if 0 <= idx < len(entity.data["points"]):
                     entity.data["points"][idx] = p     
+        # ----------------------------------------------------
+        # INSERT: mover el punto de control i
+        # ----------------------------------------------------
+        elif entity.kind == "insert":
+            t = grip["type"]
+            if t == "ins_pos":
+                entity.data["position"] = p
+            elif t == "ins_scale":
+                defn = self.app.block_defs.get(entity.data["name"])
+                ref = defn.get("radius", 10.0) if defn else 10.0
+                pos = entity.data["position"]
+                dist = math.hypot(p.x - pos.x, p.y - pos.y)
+                if ref > 1e-9 and dist > 1e-9:
+                    entity.data["scale"] = max(dist / ref, 0.01)
+            elif t == "ins_rot":
+                pos = entity.data["position"]
+                ang = math.degrees(math.atan2(p.y - pos.y, p.x - pos.x))
+                entity.data["rotation"] = (ang - 90.0) % 360.0
 
         self.app.redraw()
 
@@ -568,6 +598,9 @@ class GripManager:
                     return pts[idx - 1]      # ORTHO relativo al punto anterior
                 if len(pts) > 1:
                     return pts[1]
+
+        if entity.kind == "insert":
+            return entity.data.get("position")
 
         return None
 
