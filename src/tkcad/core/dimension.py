@@ -262,3 +262,37 @@ def angular_ray_ends(data):
         L = max(d, g["radius"])
         ends.append(Point(v.x + dx / d * L, v.y + dy / d * L))
     return ends
+
+
+def lines_intersection(a1, a2, b1, b2):
+    """Intersección de las rectas (a1-a2) y (b1-b2). None si paralelas."""
+    d1x, d1y = a2.x - a1.x, a2.y - a1.y
+    d2x, d2y = b2.x - b1.x, b2.y - b1.y
+    den = d1x * d2y - d1y * d2x
+    if abs(den) < 1e-12:
+        return None
+    t = ((b1.x - a1.x) * d2y - (b1.y - a1.y) * d2x) / den
+    return Point(a1.x + t * d1x, a1.y + t * d1y)
+
+
+def refresh_angular_assoc(line_a, line_b, dim):
+    """Recalcula vertex/p1/p2 de una cota angular desde sus DOS líneas.
+    Devuelve True si la actualizó."""
+    if line_a.kind != "line" or line_b.kind != "line":
+        return False
+    a1, a2 = line_a.data["start"], line_a.data["end"]
+    b1, b2 = line_b.data["start"], line_b.data["end"]
+    v = lines_intersection(a1, a2, b1, b2)
+    if v is None:
+        return False                      # paralelas → no se toca
+
+    # rayo de cada línea = el extremo más lejano al vértice
+    p1 = a1 if math.hypot(a1.x - v.x, a1.y - v.y) >= \
+        math.hypot(a2.x - v.x, a2.y - v.y) else a2
+    p2 = b1 if math.hypot(b1.x - v.x, b1.y - v.y) >= \
+        math.hypot(b2.x - v.x, b2.y - v.y) else b2
+
+    dim.data["vertex"] = Point(v.x, v.y)
+    dim.data["p1"] = Point(p1.x, p1.y)
+    dim.data["p2"] = Point(p2.x, p2.y)
+    return True

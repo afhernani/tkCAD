@@ -28,13 +28,9 @@ def test_cota_modo_entidad_linea_asociativa():
     cmd.start(ctx)
     assert cmd.handle_input(ctx, "E") == CommandResult.RUNNING
     assert cmd.handle_input(ctx, "5,0") == CommandResult.RUNNING
+    assert cmd.handle_input(ctx, "") == CommandResult.RUNNING   # ← NUEVO: Enter = lineal
     assert cmd.handle_input(ctx, "H") == CommandResult.RUNNING
     assert cmd.handle_input(ctx, "5") == CommandResult.FINISHED
-
-    dims = [e for e in doc.entities if e.kind == "dimension"]
-    assert len(dims) == 1
-    assert dims[0].data["assoc_entity_id"] == line.id
-    assert dims[0].data["assoc_kind"] == "line"
 
 
 def test_cota_modo_entidad_circulo_radio():

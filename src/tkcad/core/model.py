@@ -120,7 +120,7 @@ class Document:
         })
 
     def add_dimension(self, dim_type, p1=None, p2=None, center=None, p=None,
-                    offset=10.0, assoc_entity_id=None, assoc_kind=None,
+                    offset=10.0, assoc_entity_id=None, assoc_entity_id2=None, assoc_kind=None,
                     assoc_angle=None, text_height=2.5, vertex=None, radius=None):
         data = {
             "dim_type": dim_type,
@@ -144,6 +144,8 @@ class Document:
             data["assoc_entity_id"] = assoc_entity_id
         if assoc_kind is not None:
             data["assoc_kind"] = assoc_kind
+        if assoc_entity_id2 is not None:
+            data["assoc_entity_id2"] = assoc_entity_id2
         if assoc_angle is not None:
             data["assoc_angle"] = float(assoc_angle)
         
@@ -151,7 +153,7 @@ class Document:
 
     def update_associative_dimensions(self):
         """Re-resuelve los puntos de las cotas asociativas desde su entidad."""
-        from .dimension import resolve_assoc
+        from .dimension import resolve_assoc, refresh_angular_assoc
 
         for entity in self.entities:
             if entity.kind != "dimension":
@@ -160,6 +162,24 @@ class Document:
             if ref_id is None:
                 continue
 
+            # ----------------------------------------------------
+            # NUEVO: cota angular asociada a DOS líneas
+            # ----------------------------------------------------
+            if entity.data.get("dim_type") == "angular":
+                ref2_id = entity.data.get("assoc_entity_id2")
+                if ref2_id is None:
+                    continue
+                ref1 = self.get_entity_by_id(ref_id)
+                ref2 = self.get_entity_by_id(ref2_id)
+                if ref1 is None or ref2 is None:
+                    # alguna línea desapareció → desasocia
+                    entity.data.pop("assoc_entity_id2", None)
+                    continue
+                refresh_angular_assoc(ref1, ref2, entity)
+                continue
+            # --------------
+            # Lógica lineal actual (sin cambios)
+            # ...................
             ref = self.get_entity_by_id(ref_id)
             if ref is None:
                 # La entidad referida ya no existe → desasocia, conserva puntos

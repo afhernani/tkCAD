@@ -2,6 +2,7 @@ import math
 from enum import Enum, auto
 
 from ...core import Command, CommandResult, Point, parse_point, parse_number
+from ...core.dimension import lines_intersection   # ← NUEVO
 
 
 class CotaState(Enum):
@@ -11,13 +12,15 @@ class CotaState(Enum):
     OFFSET = auto()
     CENTER = auto()
     P = auto()
-    PICK = auto()        # clic en entidad (modo asociativo)
-    LIN_TYPE = auto()    # orientación tras elegir línea
-    A_OFFSET = auto()    # offset tras elegir línea
-    ANG_VERTEX = auto()   # ← NUEVOS
+    PICK = auto()          # clic en entidad (modo asociativo)
+    PICK2 = auto()         # ← NUEVO: segunda línea para angular (opcional)
+    LIN_TYPE = auto()      # orientación tras elegir línea
+    A_OFFSET = auto()      # offset tras elegir línea
+    ANG_VERTEX = auto()
     ANG_P1 = auto()
     ANG_P2 = auto()
     ANG_RADIUS = auto()
+    ANG_A_RADIUS = auto()  # ← NUEVO: radio de la angular asociativa
 
 
 TYPE_MAP = {"H": "linear_h", "V": "linear_v", "A": "aligned"}
@@ -34,6 +37,7 @@ class CotaCommand(Command):
         self.p2 = None
         self.center = None
         self.assoc_id = None
+        self.assoc_id2 = None   # ← NUEVO
         self.vertex = None
 
     def start(self, ctx):
@@ -44,7 +48,6 @@ class CotaCommand(Command):
 
     def handle_input(self, ctx, text: str) -> CommandResult:
         text = text.strip()
-
         if text.upper() == "ESC":
             ctx.write("Comando COTA cancelado.")
             return CommandResult.FINISHED
@@ -70,7 +73,7 @@ class CotaCommand(Command):
                 self.state = CotaState.P1
                 ctx.prompt("Primer punto:")
                 return CommandResult.RUNNING
-            ctx.write("Tipo no válido. Usa H, V, A, R o E.")
+            ctx.write("Tipo no válido. Usa H, V, A, R, G o E.")
             return CommandResult.RUNNING
 
         # ---------- Modo asociativo ----------
@@ -82,13 +85,13 @@ class CotaCommand(Command):
             if ent is None:
                 ctx.write("No hay ninguna entidad ahí.")
                 return CommandResult.RUNNING
-
             if ent.kind == "line":
                 self.assoc_id = ent.id
-                self.state = CotaState.LIN_TYPE
-                ctx.prompt("Orientación de la cota [H/V/A]:")
+                self.state = CotaState.PICK2                    # ← CAMBIA
+                ctx.prompt(
+                    "Segunda línea para cota angular [Enter=lineal H/V/A]:"
+                )
                 return CommandResult.RUNNING
-
             if ent.kind in ("circle", "arc"):
                 c = ent.data["center"]
                 ang = math.degrees(math.atan2(p.y - c.y, p.x - c.x))
@@ -102,9 +105,62 @@ class CotaCommand(Command):
                 )
                 ctx.write("Cota de radio asociativa creada.")
                 return CommandResult.FINISHED
-
             ctx.write("Entidad no acotable (usa línea o círculo).")
             return CommandResult.RUNNING
+
+        # ---------- NUEVO: segunda línea para angular (opcional) ----------
+        if self.state == CotaState.PICK2:
+            if not text:
+                # Enter → flujo lineal asociativo de siempre
+                self.state = CotaState.LIN_TYPE
+                ctx.prompt("Orientación de la cota [H/V/A]:")
+                return CommandResult.RUNNING
+
+            p = self._parse(ctx, text)
+            if p is None:
+                return CommandResult.RUNNING
+            ent = ctx.entity_at_point(p)
+            if ent is None or ent.kind != "line":
+                ctx.write("Clic en una segunda línea, o Enter para lineal.")
+                return CommandResult.RUNNING
+
+            line1 = ctx.get_entity_by_id(self.assoc_id)
+            if line1 is None:
+                ctx.write("La entidad referida ya no existe.")
+                return CommandResult.FINISHED
+
+            a1, a2 = line1.data["start"], line1.data["end"]
+            b1, b2 = ent.data["start"], ent.data["end"]
+            v = lines_intersection(a1, a2, b1, b2)
+            if v is None:
+                ctx.write("Líneas paralelas: sin angular. "
+                          "Clic en otra línea o Enter para lineal.")
+                return CommandResult.RUNNING
+
+            self.assoc_id2 = ent.id
+            self.vertex = v
+            self.p1 = a1 if math.hypot(a1.x - v.x, a1.y - v.y) >= \
+                math.hypot(a2.x - v.x, a2.y - v.y) else a2
+            self.p2 = b1 if math.hypot(b1.x - v.x, b1.y - v.y) >= \
+                math.hypot(b2.x - v.x, b2.y - v.y) else b2
+            self.state = CotaState.ANG_A_RADIUS
+            ctx.prompt("Radio del arco de cota <15>:")
+            return CommandResult.RUNNING
+
+        # ---------- NUEVO: radio de la angular asociativa ----------
+        if self.state == CotaState.ANG_A_RADIUS:
+            radius = self._parse_offset(ctx, text, default=15.0)
+            if radius is None:
+                return CommandResult.RUNNING
+            ctx.add_dimension(
+                "angular", vertex=self.vertex, p1=self.p1, p2=self.p2,
+                radius=radius,
+                assoc_entity_id=self.assoc_id,
+                assoc_entity_id2=self.assoc_id2,
+                assoc_kind="angular",
+            )
+            ctx.write("Cota angular asociativa creada.")
+            return CommandResult.FINISHED
 
         if self.state == CotaState.LIN_TYPE:
             t = text.upper()
@@ -171,7 +227,7 @@ class CotaCommand(Command):
             ctx.prompt("Punto en el círculo:")
             return CommandResult.RUNNING
 
-        # ---------- Modo angular ----------
+        # ---------- Modo angular manual (sin cambios) ----------
         if self.state == CotaState.ANG_VERTEX:
             p = self._parse(ctx, text)
             if p is None:
@@ -239,7 +295,7 @@ class CotaCommand(Command):
     def expects_point(self) -> bool:
         return self.state in (
             CotaState.P1, CotaState.P2, CotaState.CENTER,
-            CotaState.P, CotaState.PICK,
+            CotaState.P, CotaState.PICK, CotaState.PICK2,   # ← PICK2 añadido
             CotaState.ANG_VERTEX, CotaState.ANG_P1, CotaState.ANG_P2,
         )
 
