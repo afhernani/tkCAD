@@ -5,8 +5,9 @@ Mapea cada entidad del modelo a su equivalente DXF usando ezdxf.
 
 import math
 from .dimension import angular_geometry, angular_text_position, dimension_geometry
+from .blocks import expand_inserts
 
-def export_dxf(entities, path):
+def export_dxf(entities, path, block_defs=None):
     """
     Exporta una lista de entidades a un archivo DXF.
     
@@ -17,6 +18,8 @@ def export_dxf(entities, path):
     Returns:
         (bool, str): (éxito, mensaje)
     """
+    if block_defs:
+        entities = expand_inserts(entities, block_defs)
     try:
         import ezdxf
     except ImportError:

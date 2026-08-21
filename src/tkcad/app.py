@@ -560,7 +560,7 @@ class CadApp(Document):
         if path.suffix.lower() != ".dxf":
             path = path.with_suffix(".dxf")
 
-        return _export(self.entities, path)
+        return _export(self.entities, path, block_defs=self.block_defs)
 
     # -----------------------------------
     # EXPORT PNG
@@ -608,9 +608,9 @@ class CadApp(Document):
             return layer.color if layer is not None else None
 
         if kind == "svg":
-            return export_svg(self.entities, get_layer_color, path)
+            return export_svg(self.entities, get_layer_color, path, block_defs=self.block_defs)
         else:
-            return export_png(self.entities, get_layer_color, path)
+            return export_png(self.entities, get_layer_color, path, block_defs=self.block_defs)
 
     # --------------------------------------
     # ASOCIACION DE COTA

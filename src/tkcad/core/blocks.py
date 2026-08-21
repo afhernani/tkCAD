@@ -57,3 +57,22 @@ def block_world_entities(block_defs, insert_data):
          layer)
         for kind, data, layer in defn["entities"]
     ]
+
+def expand_inserts(entities, block_defs):
+    """Devuelve la lista de entidades con los inserts expandidos
+    a entidades virtuales (para exportadores)."""
+    from types import SimpleNamespace
+    out = []
+    for e in entities:
+        if getattr(e, "kind", None) == "insert" and block_defs:
+            for kind, tdata, layer in block_world_entities(block_defs, e.data):
+                out.append(SimpleNamespace(
+                    id=getattr(e, "id", 0),
+                    kind=kind,
+                    data=tdata,
+                    layer=layer,
+                    selected=False,
+                ))
+        else:
+            out.append(e)
+    return out

@@ -93,4 +93,42 @@ def test_roundtrip_block_defs(tmp_path):
     inserts = [e for e in entities if e.kind == "insert"]
     assert len(inserts) == 1
     assert inserts[0].data["name"] == "V1"
-    
+
+def test_export_svg_con_insert(tmp_path):
+    from tkcad.core.svg_export import export_svg
+    doc = Document()
+    l = doc.add_line(Point(0, 0), Point(10, 0))
+    doc.define_block_def("V1", [l.id], Point(0, 0))
+    doc.insert_block("V1", Point(100, 0))
+
+    path = tmp_path / "ins.svg"
+    ok, msg = export_svg(doc.entities, lambda n: "white", path,
+                         block_defs=doc.block_defs)
+    assert ok, msg
+    c = path.read_text(encoding="utf-8")
+    assert "<line" in c
+
+
+def test_export_dxf_con_insert(tmp_path):
+    from tkcad.core.dxf_export import export_dxf
+    doc = Document()
+    l = doc.add_line(Point(0, 0), Point(10, 0))
+    doc.define_block_def("V1", [l.id], Point(0, 0))
+    doc.insert_block("V1", Point(100, 0))
+
+    path = tmp_path / "ins.dxf"
+    ok, msg = export_dxf(doc.entities, path, block_defs=doc.block_defs)
+    assert ok, msg
+
+
+def test_export_png_con_insert(tmp_path):
+    from tkcad.core.png_export import export_png
+    doc = Document()
+    l = doc.add_line(Point(0, 0), Point(10, 0))
+    doc.define_block_def("V1", [l.id], Point(0, 0))
+    doc.insert_block("V1", Point(100, 0))
+
+    path = tmp_path / "ins.png"
+    ok, msg = export_png(doc.entities, lambda n: "white", path,
+                         block_defs=doc.block_defs)
+    assert ok, msg

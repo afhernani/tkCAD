@@ -7,10 +7,11 @@ from .dimension import (angular_geometry, angular_ray_ends, angular_text_positio
 from .img_transform import compute_image_fit
 from .spline import eval_cubic_spline
 from .text_layout import text_block_size, split_lines
+from .blocks import expand_inserts
 
 
 def export_svg(entities, get_layer_color, path,
-               width=800, height=600, margin=20, background="black"):
+               width=800, height=600, margin=20, background="black", block_defs=None):
     """
     Exporta entidades a un archivo SVG.
     
@@ -19,6 +20,8 @@ def export_svg(entities, get_layer_color, path,
         get_layer_color: callable(nombre_capa) -> color o None
         path: ruta de salida
     """
+    if block_defs:
+        entities = expand_inserts(entities, block_defs)
     bbox = _all_bbox(entities)
     if bbox is None:
         return False, "No hay nada que exportar."

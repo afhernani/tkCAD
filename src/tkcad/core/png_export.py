@@ -6,11 +6,14 @@ from .dimension import angular_geometry, angular_ray_ends, angular_text_position
 from .img_transform import compute_image_fit
 from .svg_export import _all_bbox   # reutilizamos el bbox del exportador SVG
 from .spline import eval_cubic_spline
+from .blocks import expand_inserts
 
 
 def export_png(entities, get_layer_color, path,
-               width=800, height=600, margin=20, background="black"):
+               width=800, height=600, margin=20, background="black", block_defs=None):
     """Exporta entidades a un archivo PNG. Returns (bool, str)."""
+    if block_defs:
+        entities = expand_inserts(entities, block_defs)
     try:
         from PIL import Image, ImageDraw
     except ImportError:
