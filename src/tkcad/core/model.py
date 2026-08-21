@@ -8,6 +8,7 @@ import copy, math
 from typing import List
 
 from tkcad.core.dimension import dimension_points
+from .blocks import transform_block_data, block_world_entities
 
 from .entity import Entity
 from .point import Point
@@ -2032,7 +2033,8 @@ class Document:
                 if key in d:
                     d[key] = xf(d[key])
             d["offset"] = d.get("offset", 10.0) * scale
-        return d
+        return transform_block_data(kind, data, base, position,
+                                    rotation, scale)
 
     def insert_world_entities(self, entity):
         """Devuelve [(kind, data_en_mundo, layer)] de un insert."""
@@ -2051,7 +2053,7 @@ class Document:
                 ),
                 layer,
             ))
-        return out
+        return block_world_entities(self.block_defs, entity.data)
 
     def insert_block(self, name, position, rotation=0.0, scale=1.0):
         """Inserta un bloque definido. Devuelve la entidad insert."""
@@ -2089,3 +2091,20 @@ class Document:
         rot_p = Point(pos.x - r * sa, pos.y + r * ca)    # eje local +Y
         scl_p = Point(pos.x + r * ca, pos.y + r * sa)    # eje local +X
         return rot_p, scl_p
+
+    def rebuild_blocks(self):
+        """Reconstruye block_names y _next_block_id tras cargar un proyecto."""
+        self.block_names = {}
+        max_bid = 0
+        for e in self.entities:
+            bid = getattr(e, "block_id", None)
+            if bid is None:
+                continue
+            max_bid = max(max_bid, bid)
+            if bid not in self.block_names:
+                self.block_names[bid] = (
+                    getattr(e, "block_name", None) or f"BLOQUE_{bid}"
+                )
+            if hasattr(e, "block_name"):
+                delattr(e, "block_name")   # limpia el atributo transitorio
+        self._next_block_id = max_bid + 1

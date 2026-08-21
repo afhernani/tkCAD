@@ -307,6 +307,8 @@ class CadApp(Document):
                 path, self.entities, self.next_entity_id,
                 layers=self.layers,
                 current_layer=self.current_layer,
+                block_names=self.block_names,      # ← nivel 1
+                block_defs=self.block_defs,        # ← nivel 2
             )
             self.current_file = path
             self.root.title(f"Editor - {path.name}")
@@ -339,6 +341,9 @@ class CadApp(Document):
             self.next_entity_id = next_id
             self.layers = layers                     # ← NUEVO
             self.current_layer = current_layer
+            self.rebuild_blocks()                    # ← nivel 1 (grupos)
+            self.block_defs = getattr(               # ← nivel 2 (definiciones)
+                self.project_io, "last_block_defs", {})
             self.current_file = path
             self.clear_history()
             self.redraw()
@@ -354,6 +359,9 @@ class CadApp(Document):
         self.canvas.item_to_entity = {}
         self.layers = {"0": Layer(name="0")}
         self.current_layer = "0"
+        self.block_names = {}                        # ← nivel 1
+        self._next_block_id = 1                      # ← nivel 1
+        self.block_defs = {}                         # ← nivel 2
         self.clear_history()
 
         if hasattr(self, "preview_line"):

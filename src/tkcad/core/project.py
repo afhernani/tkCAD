@@ -107,7 +107,7 @@ class ProjectIO:
             locked=bool(data.get("locked", False)),
         )
 
-    def to_json(self, entities, next_entity_id, layers=None, current_layer="0", block_names=None) -> str:
+    def to_json(self, entities, next_entity_id, layers=None, current_layer="0", block_names=None, block_defs=None) -> str:
         if layers is None:
             layers = {"0": Layer(name="0")}
         project_data = {
@@ -121,6 +121,10 @@ class ProjectIO:
             "entities": [
                 self.entity_to_dict(entity, block_names)
                 for entity in entities
+            ],
+            "block_defs": [
+                self.block_def_to_dict(n, d)
+                for n, d in (block_defs or {}).items()
             ],
         }
         return json.dumps(project_data, indent=2, ensure_ascii=False)
@@ -151,18 +155,19 @@ class ProjectIO:
         current_layer = str(project_data.get("current_layer", "0"))
         if current_layer not in layers:
             current_layer = "0"
+        self.last_block_defs = self._block_defs_from_data(project_data)
         return entities, next_id, layers, current_layer
     
     # --------------------------------------------------------
     # Acceso a disco (sin diálogos)
     # --------------------------------------------------------
-    def save(self, path, entities, next_entity_id, layers=None, current_layer="0", block_names=None) -> Path:
+    def save(self, path, entities, next_entity_id, layers=None, current_layer="0", block_names=None, block_defs=None) -> Path:
         path = Path(path).expanduser()
         if path.suffix == "":
             path = path.with_suffix(".json")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
-            self.to_json(entities, next_entity_id, layers, current_layer, block_names),
+            self.to_json(entities, next_entity_id, layers, current_layer, block_names, block_defs),
             encoding="utf-8",
         )
         return path
@@ -180,3 +185,35 @@ class ProjectIO:
             path.read_text(encoding="utf-8")
         )
         return entities, next_id, layers, current_layer, path
+
+    def block_def_to_dict(self, name, defn):
+        return {
+            "name": name,
+            "base": self.encode_value(defn["base"]),
+            "radius": defn.get("radius", 10.0),
+            "entities": [
+                {
+                    "kind": kind,
+                    "layer": layer,
+                    "data": {k: self.encode_value(v)
+                             for k, v in data.items()},
+                }
+                for kind, data, layer in defn["entities"]
+            ],
+        }
+
+    def _block_defs_from_data(self, project_data):
+        defs = {}
+        for bd in project_data.get("block_defs", []):
+            defs[bd["name"]] = {
+                "base": self.decode_value(bd["base"]),
+                "radius": float(bd.get("radius", 10.0)),
+                "entities": [
+                    (ed["kind"],
+                     {k: self.decode_value(v)
+                      for k, v in ed.get("data", {}).items()},
+                     str(ed.get("layer", "0")))
+                    for ed in bd.get("entities", [])
+                ],
+            }
+        return defs

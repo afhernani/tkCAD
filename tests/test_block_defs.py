@@ -1,6 +1,6 @@
 import pytest
 
-from tkcad.core import Document, Point
+from tkcad.core import Document, Point, ProjectIO
 
 
 def test_define_e_insertar():
@@ -71,3 +71,26 @@ def test_bbox_insert():
     assert max_x == pytest.approx(110)
     assert min_y == pytest.approx(50)
 
+def test_roundtrip_block_defs(tmp_path):
+    doc = Document()
+    l = doc.add_line(Point(0, 0), Point(10, 0))
+    doc.define_block_def("V1", [l.id], Point(0, 0))
+    doc.insert_block("V1", Point(50, 0))
+
+    io = ProjectIO()
+    path = tmp_path / "bd.json"
+    io.save(path, doc.entities, doc.next_entity_id,
+            layers=doc.layers, current_layer=doc.current_layer,
+            block_names=doc.block_names, block_defs=doc.block_defs)
+
+    entities, next_id, layers, current_layer, _ = io.load(path)
+
+    doc2 = Document()
+    doc2.entities = entities
+    doc2.block_defs = io.last_block_defs
+
+    assert "V1" in doc2.block_defs
+    inserts = [e for e in entities if e.kind == "insert"]
+    assert len(inserts) == 1
+    assert inserts[0].data["name"] == "V1"
+    
