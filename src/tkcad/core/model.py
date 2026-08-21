@@ -2108,3 +2108,31 @@ class Document:
             if hasattr(e, "block_name"):
                 delattr(e, "block_name")   # limpia el atributo transitorio
         self._next_block_id = max_bid + 1
+
+    def redefine_block_def(self, name, ids, base):
+        """Actualiza una definición existente.
+        Todos los inserts que la usan cambian en el siguiente redraw.
+        Elimina las entidades origen (como DEFBLOQUE)."""
+        if name not in self.block_defs:
+            return False
+        originals = [self.get_entity_by_id(i) for i in ids]
+        originals = [e for e in originals if e is not None]
+        if not originals:
+            return False
+
+        ents = [(e.kind, copy.deepcopy(e.data), e.layer) for e in originals]
+
+        maxr = 0.0
+        for kind, data, layer in ents:
+            for p in self._data_points_for_bbox(kind, data):
+                maxr = max(maxr, math.hypot(p.x - base.x, p.y - base.y))
+
+        self.block_defs[name] = {
+            "base": copy.deepcopy(base),
+            "entities": ents,
+            "radius": max(maxr, 1e-6),
+        }
+        for e in originals:
+            self.entities.remove(e)
+        self.notify_change()
+        return True

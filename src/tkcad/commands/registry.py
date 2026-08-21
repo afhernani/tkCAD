@@ -33,6 +33,7 @@ from .modify.bloque import BloqueCommand
 from .modify.descomponer import DescomponerCommand
 from .modify.defbloque import DefBloqueCommand
 from .modify.insertar import InsertarCommand
+from .modify.redefinir import RedefinirCommand
 
 # File
 from .file.guardar import SaveCommand, SaveAsCommand
@@ -85,6 +86,7 @@ ALL_COMMANDS: List[Type[Command]] = [
     DescomponerCommand,
     DefBloqueCommand,
     InsertarCommand,
+    RedefinirCommand,
     # File
     SaveCommand,
     SaveAsCommand,
