@@ -612,6 +612,57 @@ class CadApp(Document):
         else:
             return export_png(self.entities, get_layer_color, path, block_defs=self.block_defs)
 
+    # ---------------------------------------------
+    # import_dxf
+    # ---------------------------------------------
+    def import_dxf(self, filepath=None):
+        """Importa un DXF a entidades tkCAD (diálogo si no hay ruta)."""
+        from .core.dxf_import import import_dxf as _import
+
+        if filepath is None:
+            selected = filedialog.askopenfilename(
+                parent=self.root,
+                title="Importar DXF",
+                filetypes=[("AutoCAD DXF", "*.dxf"), ("Todos", "*.*")],
+            )
+            if not selected:
+                return False, "Importación cancelada."
+            filepath = selected
+
+        try:
+            items, defs = _import(filepath)
+        except Exception as ex:
+            return False, f"Error al importar DXF: {ex}"
+
+        # --- Fusionar definiciones de bloque (renombrar colisiones) ---
+        rename = {}
+        for name, defn in defs.items():
+            final = name
+            i = 1
+            while final in self.block_defs:
+                final = f"{name}_{i}"
+                i += 1
+            rename[name] = final
+            # radio de referencia real para los grips
+            maxr = 0.0
+            for kind, data, layer in defn["entities"]:
+                for p in self._data_points_for_bbox(kind, data):
+                    maxr = max(maxr, (p.x ** 2 + p.y ** 2) ** 0.5)
+            defn["radius"] = max(maxr, 1e-6)
+            self.block_defs[final] = defn
+
+        # --- Crear entidades ---
+        count = 0
+        for kind, data, layer in items:
+            if kind == "insert" and data["name"] in rename:
+                data["name"] = rename[data["name"]]
+            e = self.add_entity(kind, data, notify=False)
+            e.layer = layer if layer in self.layers else "0"
+            count += 1
+
+        self.notify_change()
+        return True, f"Importadas {count} entidades del DXF."
+
     # --------------------------------------
     # ASOCIACION DE COTA
     # --------------------------------------
