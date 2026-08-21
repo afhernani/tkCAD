@@ -35,3 +35,19 @@ def test_explode_block():
     doc.set_selection_ids([l1.id])
     sel = [e.id for e in doc.get_selected_entities()]
     assert sel == [l1.id]
+
+def test_copy_selected_conserva_bloques():
+    doc = Document()
+    l1 = doc.add_line(Point(0, 0), Point(10, 0))
+    l2 = doc.add_line(Point(20, 0), Point(30, 0))
+    doc.make_block([l1.id, l2.id], "PARED")
+
+    doc.set_selection_ids([l1.id])          # se expande al bloque entero
+    new_ids = doc.copy_selected(100, 0)
+    assert len(new_ids) == 2
+
+    b1 = getattr(doc.get_entity_by_id(new_ids[0]), "block_id", None)
+    b2 = getattr(doc.get_entity_by_id(new_ids[1]), "block_id", None)
+    assert b1 is not None and b1 == b2      # las copias forman un bloque
+    assert b1 != 1                          # …nuevo, distinto del original
+    assert doc.block_names[b1] == "PARED_1"

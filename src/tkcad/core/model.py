@@ -480,24 +480,15 @@ class Document:
     #--------------------------------------------------------
 
     def copy_selected(self, dx: float, dy: float):
+        """ Copia la seleccion desplazada. Los bloques se clonan como bloques nuevos"""
         selected = self.get_selected_entities()
 
         if not selected:
             return []
 
         new_ids = []
-
-        for entity in selected:
-            new_data = copy.deepcopy(entity.data)
-
-            new_entity = self.add_entity(
-                entity.kind,
-                new_data,
-                notify=False,
-            )
-
+        for new_entity in self._clone_with_blocks(selected):
             self._move_entity(new_entity, dx, dy)
-
             new_ids.append(new_entity.id)
 
         self.notify_change()
@@ -520,18 +511,8 @@ class Document:
             ]
 
         new_ids = []
-
-        for entity in source:
-            new_data = copy.deepcopy(entity.data)
-
-            new_entity = self.add_entity(
-                entity.kind,
-                new_data,
-                notify=False,
-            )
-
+        for new_entity in self._clone_with_blocks(source):
             self._move_entity(new_entity, dx, dy)
-
             new_ids.append(new_entity.id)
 
         self.notify_change()
@@ -1798,7 +1779,8 @@ class Document:
     def _clone_entity(self, entity):
         """Duplica una entidad conservando capa. Devuelve la nueva."""
         data = copy.deepcopy(entity.data)
-        new = self.add_entity(entity.kind, data)
+        new = self.add_entity(entity.kind, data, notify=False)   # ← notify=False
+        # new = self.add_entity(entity.kind, data)
         new.layer = entity.layer
         return new
 
@@ -1829,8 +1811,7 @@ class Document:
             for c in range(cols):
                 if r == 0 and c == 0:
                     continue
-                for orig in originals:
-                    copy = self._clone_entity(orig)
+                for copy in self._clone_with_blocks(originals):
                     self._map_entity_points(
                         copy,
                         lambda p, ox=c * dx, oy=r * dy:
@@ -1849,14 +1830,12 @@ class Document:
         for i in range(1, count):
             ang = math.radians(step * i)
             ca, sa = math.cos(ang), math.sin(ang)
-            for orig in originals:
-                copy = self._clone_entity(orig)
+            def rot(p):
+                dx, dy = p.x - center.x, p.y - center.y
+                return Point(center.x + dx * ca - dy * sa,
+                             center.y + dx * sa + dy * ca)
 
-                def rot(p):
-                    dx, dy = p.x - center.x, p.y - center.y
-                    return Point(center.x + dx * ca - dy * sa,
-                                 center.y + dx * sa + dy * ca)
-
+            for copy in self._clone_with_blocks(originals):
                 self._map_entity_points(copy, rot)
                 # Orientación propia de arcos y elipses
                 if copy.kind == "arc":
@@ -1925,3 +1904,31 @@ class Document:
                     out.append(s)
         return out
 
+    def _unique_block_name(self, name):
+        existing = set(self.block_names.values())
+        if name not in existing:
+            return name
+        i = 1
+        while f"{name}_{i}" in existing:
+            i += 1
+        return f"{name}_{i}"
+
+    def _clone_with_blocks(self, originals):
+        """Clona entidades conservando el agrupado: cada bloque del conjunto
+        original pasa a ser un bloque NUEVO en las copias.
+        Devuelve la lista de copias."""
+        bid_map = {}
+        copies = []
+        for orig in originals:
+            copy = self._clone_entity(orig)
+            bid = getattr(orig, "block_id", None)
+            if bid is not None:
+                if bid not in bid_map:
+                    new_bid = self._next_block_id
+                    self._next_block_id += 1
+                    base = self.block_names.get(bid, f"BLOQUE_{bid}")
+                    self.block_names[new_bid] = self._unique_block_name(base)
+                    bid_map[bid] = new_bid
+                copy.block_id = bid_map[bid]
+            copies.append(copy)
+        return copies
