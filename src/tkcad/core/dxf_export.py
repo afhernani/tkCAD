@@ -163,12 +163,15 @@ def _add_angular(msp, data):
     g = angular_geometry(data)
     v = g["vertex"]
     try:
-        return msp.add_angular_dim_cra(
+        dim = msp.add_angular_dim_cra(
             center=(v.x, v.y, 0),
             radius=g["radius"],
             start_angle=g["a1"],
             end_angle=g["a1"] + g["extent"],
+            distance=g["radius"],          # ← obligatorio en ezdxf 1.4.x
         )
+        dim.render()                       # ← geometría real del DIMENSION
+        return dim
     except Exception:
         # Respaldo: geometría (2 líneas + arco + texto)
         for endp in (g["arc_start"], g["arc_end"]):
@@ -180,8 +183,8 @@ def _add_angular(msp, data):
             end_angle=g["a1"] + g["extent"],
         )
         tp = angular_text_position(data)
-        msp.add_text(f"{g['value']:.1f}°", height=data.get("text_height", 2.5))\
-           .set_placement((tp.x, tp.y, 0))
+        msp.add_text(f"{g['value']:.1f}°", height=data.get("text_height", 
+                                                           2.5)).set_placement((tp.x, tp.y, 0))
         return None
 
 def _add_ellipse(msp, data):

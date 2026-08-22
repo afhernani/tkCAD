@@ -132,25 +132,62 @@ def _linear_offset(data, dimline):
     wx, wy = dimline.x - p1.x, dimline.y - p1.y
     return wx * (-uy) + wy * ux
 
-
 def _convert_dimension(e, layer):
-    """Convierte un DIMENSION de DXF en nuestra cota (lineal/radio).
+    """Convierte un DIMENSION de DXF en nuestra cota (angular/lineal/radio).
     Lee solo los atributos realmente presentes en el archivo."""
     try:
         attrs = e.dxfattribs()
-        dt = int(attrs.get("dim_type", 0) or 0) & 7
+        dt = int(attrs.get("dimtype", 0) or 0) & 7
+
+        # ---------- angular 3 puntos (dt == 5, nuestro export) ----------
+        if dt == 5 and attrs.get("defpoint5") is not None:
+            v = attrs.get("defpoint4") or attrs.get("defpoint5")
+            q1 = attrs.get("defpoint2")
+            q2 = attrs.get("defpoint3")
+            if v is not None and q1 is not None and q2 is not None:
+                vertex = _p(v)
+                p1w, p2w = _p(q1), _p(q2)
+                r = math.hypot(p1w.x - vertex.x, p1w.y - vertex.y)
+                return [("dimension", {
+                    "dim_type": "angular", "vertex": vertex,
+                    "p1": p1w, "p2": p2w, "radius": r,
+                    "text_height": 2.5}, layer)]
+
+        # ---------- angular 2 líneas (dt == 2, DXF externos) ----------
+        if dt == 2 and attrs.get("defpoint5") is not None:
+            l1 = (attrs.get("defpoint2"), attrs.get("defpoint3"))
+            l2 = (attrs.get("defpoint4"), attrs.get("defpoint5"))
+            if all(x is not None for x in l1 + l2):
+                cands = [
+                    (l1[0], l1[1], l2[0], l2[1]),
+                    (l1[0], l1[1], l2[1], l2[0]),
+                    (l1[1], l1[0], l2[0], l2[1]),
+                    (l1[1], l1[0], l2[1], l2[0]),
+                ]
+                v1, r1, v2, r2 = min(
+                    cands,
+                    key=lambda c: (c[0].x - c[2].x) ** 2 +
+                                  (c[0].y - c[2].y) ** 2)
+                vertex = Point((v1.x + v2.x) / 2.0, (v1.y + v2.y) / 2.0)
+                p1w, p2w = _p(r1), _p(r2)
+                r = math.hypot(p1w.x - vertex.x, p1w.y - vertex.y)
+                return [("dimension", {
+                    "dim_type": "angular", "vertex": vertex,
+                    "p1": p1w, "p2": p2w, "radius": r,
+                    "text_height": 2.5}, layer)]
+
         p1 = attrs.get("defpoint2")
         p2 = attrs.get("defpoint3")
         dimline = attrs.get("defpoint")
         tip = attrs.get("defpoint4")
 
         # ---------- radio / diámetro (lleva defpoint4) ----------
-        if tip is not None and dimline is not None:
+        if tip is not None and dimline is not None and dt not in (2, 5):
             t = _p(tip)
-            if dt == 3:                       # diámetro → radio equivalente
+            if dt == 3:
                 a = _p(dimline)
                 center = Point((a.x + t.x) / 2.0, (a.y + t.y) / 2.0)
-            else:                             # radio: defpoint = centro
+            else:
                 center = _p(dimline)
             return [("dimension", {
                 "dim_type": "radius", "center": center, "p": t,

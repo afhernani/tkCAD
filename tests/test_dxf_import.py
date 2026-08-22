@@ -76,6 +76,7 @@ def test_import_polilinea_y_texto(tmp_path):
     assert "polyline" in kinds
     assert "text" in kinds
 
+
 def test_importar_comando(tmp_path):
     import ezdxf
     from tkcad.commands.file.importar import ImportarCommand
@@ -105,3 +106,31 @@ def test_importar_comando(tmp_path):
     assert cmd.handle_input(ctx, str(path)) == CommandResult.FINISHED
     assert len(doc.entities) == 1
     assert doc.entities[0].kind == "line"
+
+
+def test_roundtrip_cota_angular(tmp_path):
+    doc = Document()
+    doc.add_entity("dimension", {
+        "dim_type": "angular",
+        "vertex": Point(0, 0),
+        "p1": Point(50, 0),
+        "p2": Point(30, 30),
+        "radius": 20.0,
+        "text_height": 2.5,
+    })
+
+    path = tmp_path / "ang.dxf"
+    ok, msg = export_dxf(doc.entities, path)
+    assert ok, msg
+
+    items, defs = import_dxf(path)
+    dims = [d for k, d, l in items if k == "dimension"]
+    assert len(dims) == 1
+    
+    ang = dims[0]
+    assert ang["dim_type"] == "angular"
+    assert ang["vertex"] == Point(0, 0)
+    # Los puntos p1/p2 pueden variar ligeramente en distancia al vértice 
+    # según ezdxf, pero deben estar sobre los mismos rayos
+    assert ang["p1"].y == pytest.approx(0.0, abs=1e-6)
+    assert ang["p2"].x == pytest.approx(ang["p2"].y, abs=1e-6)  # rayo a 45°
