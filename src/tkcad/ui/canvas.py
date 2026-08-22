@@ -3,7 +3,7 @@ import tkinter as tk
 
 from ..core import Point
 from .snap_markers import SnapMarkerDrawer, SNAP_MARKER_KINDS
-from ..core.dimension import (angular_ray_ends, angular_text_position, dimension_geometry,
+from ..core.dimension import (angular_geometry, angular_ray_ends, angular_text_position, dimension_geometry,
                                   dimension_text_position,
                                   dimension_text_height)
 
@@ -456,6 +456,97 @@ class CadCanvas(tk.Canvas):
                 if len(pts) >= 2:
                     item = self.create_line(pts, fill=color)
                     self.item_to_entity[item] = entity.id
+
+            elif entity.kind == "dimension":
+                self._draw_dimension_data(
+                    entity.data, color, f"entity_{entity.id}", entity.id)
+
+            elif kind == "dimension":
+                self._draw_dimension_data(data, color, tag, entity.id)
+
+
+    def _draw_dimension_data(self, data, color, tag, eid):
+        """Dibuja una cota desde su data (lo usan redraw y _draw_insert)."""
+        t = data.get("dim_type")
+        th = float(data.get("text_height", 2.5))
+        font_px = max(int(self.world_to_canvas_length(th)), 4)
+
+        def seg(a, b, width=1):
+            x1, y1 = self.world_to_canvas(a)
+            x2, y2 = self.world_to_canvas(b)
+            item = self.create_line(x1, y1, x2, y2, fill=color,
+                                    width=width, tags=tag)
+            self.item_to_entity[item] = eid
+
+        def texto(p, s):
+            x, y = self.world_to_canvas(p)
+            item = self.create_text(x, y - 4, text=s, fill=color,
+                                    anchor="center",
+                                    font=("TkDefaultFont", -font_px))
+            self.item_to_entity[item] = eid
+
+        if t in ("linear_h", "linear_v", "aligned"):
+            p1, p2 = data["p1"], data["p2"]
+            off = float(data.get("offset", 10.0))
+            if t == "linear_h":
+                y = max(p1.y, p2.y) + off
+                d1, d2 = Point(p1.x, y), Point(p2.x, y)
+                value = abs(p2.x - p1.x)
+            elif t == "linear_v":
+                x = max(p1.x, p2.x) + off
+                d1, d2 = Point(x, p1.y), Point(x, p2.y)
+                value = abs(p2.y - p1.y)
+            else:
+                ux, uy = p2.x - p1.x, p2.y - p1.y
+                L = math.hypot(ux, uy) or 1.0
+                nx, ny = -uy / L, ux / L
+                d1 = Point(p1.x + nx * off, p1.y + ny * off)
+                d2 = Point(p2.x + nx * off, p2.y + ny * off)
+                value = L
+            seg(p1, d1)
+            seg(p2, d2)
+            seg(d1, d2)
+            self._draw_arrows_simple(d1, d2, color, tag, eid)
+            texto(Point((d1.x + d2.x) / 2, (d1.y + d2.y) / 2),
+                  f"{value:.2f}")
+
+        elif t == "radius":
+            c, p = data["center"], data["p"]
+            seg(c, p)
+            r = math.hypot(p.x - c.x, p.y - c.y)
+            texto(Point((c.x + p.x) / 2, (c.y + p.y) / 2), f"R{r:.2f}")
+
+        elif t == "angular":
+            g = angular_geometry(data)
+            v = g["vertex"]
+            seg(v, g["arc_start"])
+            seg(v, g["arc_end"])
+            cx, cy = self.world_to_canvas(v)
+            r_px = self.world_to_canvas_length(g["radius"])
+            item = self.create_arc(cx - r_px, cy - r_px,
+                                   cx + r_px, cy + r_px,
+                                   start=g["a1"], extent=g["extent"],
+                                   style="arc", outline=color,
+                                   width=1, tags=tag)
+            self.item_to_entity[item] = eid
+            texto(angular_text_position(data), f"{g['value']:.1f}°")
+
+    def _draw_arrows_simple(self, a, b, color, tag, eid):
+        """Flechas simples (8 px) en los extremos del segmento a→b."""
+        x1, y1 = self.world_to_canvas(a)
+        x2, y2 = self.world_to_canvas(b)
+        ux, uy = x2 - x1, y2 - y1
+        L = math.hypot(ux, uy) or 1.0
+        ux, uy = ux / L, uy / L
+        for tx, ty, dx, dy in ((x1, y1, ux, uy), (x2, y2, -ux, -uy)):
+            for ang in (25, -25):
+                ca, sa = math.cos(math.radians(ang)), \
+                    math.sin(math.radians(ang))
+                wx = dx * ca - dy * sa
+                wy = dx * sa + dy * ca
+                item = self.create_line(tx, ty, tx + wx * 8, ty + wy * 8,
+                                        fill=color, width=1, tags=tag)
+                self.item_to_entity[item] = eid
 
 
     def _draw_angular_dimension(self, entity, data, color):

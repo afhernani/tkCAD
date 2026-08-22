@@ -4,8 +4,11 @@ Mapea cada entidad del modelo a su equivalente DXF usando ezdxf.
 """
 
 import math
+from types import SimpleNamespace
+
+from .point import Point
 from .dimension import angular_geometry, angular_text_position, dimension_geometry
-from .blocks import expand_inserts
+from .blocks import expand_inserts, transform_block_data
 
 def export_dxf(entities, path, block_defs=None):
     """
@@ -18,27 +21,64 @@ def export_dxf(entities, path, block_defs=None):
     Returns:
         (bool, str): (éxito, mensaje)
     """
-    if block_defs:
-        entities = expand_inserts(entities, block_defs)
+    if block_defs is None:
+        block_defs = {}
     try:
         import ezdxf
     except ImportError:
         return False, "ezdxf no está instalado. Ejecuta: pixi add ezdxf"
-
     try:
         doc = ezdxf.new(dxfversion="R2010")
         msp = doc.modelspace()
-
         count = 0
+        written_blocks = set()
         for entity in entities:
-            if _add_entity(msp, doc, entity):
+            if entity.kind == "insert" \
+                    and entity.data.get("name") in block_defs:
+                if _add_insert(msp, doc, entity, block_defs,
+                               written_blocks):
+                    count += 1
+            elif _add_entity(msp, doc, entity):
                 count += 1
-
         doc.saveas(str(path))
         return True, f"Exportadas {count} entidades a {path}"
     except Exception as ex:
         return False, f"Error al exportar DXF: {ex}"
 
+def _safe_block_name(name):
+    out = "".join(ch if ch.isalnum() or ch in "-_$" else "_"
+                 for ch in name)
+    return out or "BLOQUE"
+
+def _add_insert(msp, doc, entity, block_defs, written_blocks):
+    """Escribe el BLOCK (una vez) + el INSERT en modelspace."""
+    name = entity.data["name"]
+    safe = _safe_block_name(name)
+    if safe not in written_blocks:
+        defn = block_defs[name]
+        base = defn["base"]
+        block = doc.blocks.new(name=safe)
+        for kind, data, layer in defn["entities"]:
+            if kind == "insert":
+                continue          # v1: sin inserts anidados
+            local = transform_block_data(
+                kind, data, base, Point(0.0, 0.0), 0.0, 1.0)
+            shim = SimpleNamespace(kind=kind, data=local,
+                                   layer=layer, id=0, selected=False)
+            _add_entity(block, doc, shim)
+        written_blocks.add(safe)
+
+    d = entity.data
+    msp.add_blockref(
+        safe,
+        (d["position"].x, d["position"].y, 0),
+        dxfattribs={
+            "rotation": d.get("rotation", 0.0),
+            "xscale": d.get("scale", 1.0),
+            "yscale": d.get("scale", 1.0),
+        },
+    )
+    return True
 
 def _add_entity(msp, doc, entity) -> bool:
     """Añade una entidad al modelspace. Devuelve True si se añadió."""

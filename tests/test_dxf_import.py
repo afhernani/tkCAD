@@ -1,28 +1,65 @@
+import pytest
 from tkcad.core import Document, Point
 from tkcad.core.command import CommandResult
 from tkcad.core.dxf_export import export_dxf
 from tkcad.core.dxf_import import import_dxf
 
 
-def test_roundtrip_dxf(tmp_path):
-    doc = Document()
-    doc.add_line(Point(0, 0), Point(10, 0))
-    doc.add_circle(Point(5, 5), 3)
-    doc.add_arc(Point(0, 0), 5, 0, 90)
+import pytest
 
-    path = tmp_path / "rt.dxf"
+
+def test_roundtrip_cotas(tmp_path):
+    import math
+    doc = Document()
+    doc.add_entity("dimension", {
+        "dim_type": "linear_h", "p1": Point(0, 0), "p2": Point(50, 0),
+        "offset": 10.0, "text_height": 2.5,
+    })
+    ang = math.radians(45.0)
+    doc.add_entity("dimension", {
+        "dim_type": "radius", "center": Point(100, 0),
+        "p": Point(100 + 20 * math.cos(ang), 20 * math.sin(ang)),
+        "text_height": 2.5,
+    })
+
+    path = tmp_path / "cotas.dxf"
     ok, msg = export_dxf(doc.entities, path)
     assert ok, msg
 
     items, defs = import_dxf(path)
-    kinds = sorted(k for k, d, l in items)
-    assert kinds == ["arc", "circle", "line"]
+    dims = [d for k, d, l in items if k == "dimension"]
+    assert len(dims) == 2
 
-    line = next(d for k, d, l in items if k == "line")
-    assert line["start"].x == 0 and line["end"].x == 10
+    lin = next(d for d in dims if d["dim_type"] in ("linear_h", "aligned"))
+    assert lin["p1"].x == 0 and lin["p2"].x == 50
 
-    circ = next(d for k, d, l in items if k == "circle")
-    assert circ["radius"] == 3
+    rad = next(d for d in dims if d["dim_type"] == "radius")
+    assert rad["center"].x == 100
+    r = math.hypot(rad["p"].x - rad["center"].x,
+                   rad["p"].y - rad["center"].y)
+    assert r == pytest.approx(20.0)
+
+
+def test_roundtrip_bloques_dxf(tmp_path):
+    doc = Document()
+    l = doc.add_line(Point(0, 0), Point(10, 0))
+    c = doc.add_circle(Point(5, 5), 2)
+    doc.define_block_def("V1", [l.id, c.id], Point(0, 0))
+    doc.insert_block("V1", Point(100, 0), rotation=90, scale=2)
+
+    path = tmp_path / "bl.dxf"
+    ok, msg = export_dxf(doc.entities, path, block_defs=doc.block_defs)
+    assert ok, msg
+
+    items, defs = import_dxf(path)
+    assert "V1" in defs
+    inserts = [d for k, d, ly in items if k == "insert"]
+    assert len(inserts) == 1
+    assert inserts[0]["position"] == Point(100, 0)
+    assert inserts[0]["rotation"] == 90
+    assert inserts[0]["scale"] == 2
+    kinds = sorted(k for k, dd, ly in defs["V1"]["entities"])
+    assert kinds == ["circle", "line"]
 
 
 def test_import_polilinea_y_texto(tmp_path):

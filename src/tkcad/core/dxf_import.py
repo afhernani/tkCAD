@@ -76,6 +76,9 @@ def convert_entity(e):
                           "height": float(e.dxf.char_height),
                           "content": str(content)}, layer)]
 
+    if t == "DIMENSION":
+        return _convert_dimension(e, layer)
+
     return []
 
 
@@ -113,3 +116,66 @@ def import_dxf(path):
         out.extend(convert_entity(e))
 
     return out, block_defs
+
+def _linear_offset(data, dimline):
+    """Offset firmado de la cota lineal según el punto de la línea de cota.
+    Convención: línea de cota = base + offset."""
+    if data["dim_type"] == "linear_h":
+        return dimline.y - max(data["p1"].y, data["p2"].y)
+    if data["dim_type"] == "linear_v":
+        return dimline.x - max(data["p1"].x, data["p2"].x)
+    # aligned: distancia perpendicular firmada a la recta p1-p2
+    p1, p2 = data["p1"], data["p2"]
+    ux, uy = p2.x - p1.x, p2.y - p1.y
+    L = math.hypot(ux, uy) or 1.0
+    ux, uy = ux / L, uy / L
+    wx, wy = dimline.x - p1.x, dimline.y - p1.y
+    return wx * (-uy) + wy * ux
+
+
+def _convert_dimension(e, layer):
+    """Convierte un DIMENSION de DXF en nuestra cota (lineal/radio).
+    Lee solo los atributos realmente presentes en el archivo."""
+    try:
+        attrs = e.dxfattribs()
+        dt = int(attrs.get("dim_type", 0) or 0) & 7
+        p1 = attrs.get("defpoint2")
+        p2 = attrs.get("defpoint3")
+        dimline = attrs.get("defpoint")
+        tip = attrs.get("defpoint4")
+
+        # ---------- radio / diámetro (lleva defpoint4) ----------
+        if tip is not None and dimline is not None:
+            t = _p(tip)
+            if dt == 3:                       # diámetro → radio equivalente
+                a = _p(dimline)
+                center = Point((a.x + t.x) / 2.0, (a.y + t.y) / 2.0)
+            else:                             # radio: defpoint = centro
+                center = _p(dimline)
+            return [("dimension", {
+                "dim_type": "radius", "center": center, "p": t,
+                "text_height": 2.5}, layer)]
+
+        # ---------- lineal / alineada (lleva defpoint2 y 3) ----------
+        if p1 is not None and p2 is not None:
+            p1w, p2w = _p(p1), _p(p2)
+            dimline_w = _p(dimline) if dimline is not None else p1w
+            if dt == 1:
+                dim_type = "aligned"
+            else:
+                ang = float(attrs.get("angle", 0.0) or 0.0) % 180.0
+                dx = p2w.x - p1w.x
+                dy = p2w.y - p1w.y
+                if abs(ang) < 1e-6:
+                    dim_type = "linear_h" if abs(dy) < 1e-9 else "aligned"
+                elif abs(ang - 90.0) < 1e-6:
+                    dim_type = "linear_v" if abs(dx) < 1e-9 else "aligned"
+                else:
+                    dim_type = "aligned"
+            data = {"dim_type": dim_type, "p1": p1w, "p2": p2w,
+                    "text_height": 2.5}
+            data["offset"] = _linear_offset(data, dimline_w)
+            return [("dimension", data, layer)]
+    except Exception:
+        return []   # cota no soportada → se ignora sin romper la importación
+    return []
