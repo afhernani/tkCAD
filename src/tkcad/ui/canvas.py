@@ -2,6 +2,7 @@ import math
 import tkinter as tk
 
 from ..core import Point
+from ..core.hatch import hatch_segments
 from .snap_markers import SnapMarkerDrawer, SNAP_MARKER_KINDS
 from ..core.dimension import (angular_geometry, angular_ray_ends, angular_text_position, dimension_geometry,
                                   dimension_text_position,
@@ -342,6 +343,9 @@ class CadCanvas(tk.Canvas):
             
             elif entity.kind == "insert":
                 self._draw_insert(entity, color)
+
+            elif entity.kind == "hatch":
+                self._draw_hatch(entity, color)
 
         # ----------------------------------------------------
         # Vista previa opcional
@@ -1226,3 +1230,29 @@ class CadCanvas(tk.Canvas):
                 item = self.create_line(tip_x, tip_y, x2, y2, fill=color)
                 self.item_to_entity[item] = entity_id
 
+    # -----------------------------------
+    # HATCH
+    # -----------------------------------
+
+    def _draw_hatch(self, entity, color):
+        data = entity.data
+        pts = data.get("points", [])
+        if len(pts) < 3:
+            return
+        tag = f"entity_{entity.id}"
+        coords = []
+        for p in pts:
+            x, y = self.world_to_canvas(p)
+            coords.extend((x, y))
+        if data.get("style", "solid") == "solid":
+            item = self.create_polygon(*coords, fill=color,
+                                       outline="", tags=tag)
+            self.item_to_entity[item] = entity.id
+        else:
+            for a, b in hatch_segments(pts, data.get("spacing", 5.0),
+                                       data.get("angle", 45.0)):
+                x1, y1 = self.world_to_canvas(a)
+                x2, y2 = self.world_to_canvas(b)
+                item = self.create_line(x1, y1, x2, y2, fill=color,
+                                        width=1, tags=tag)
+                self.item_to_entity[item] = entity.id

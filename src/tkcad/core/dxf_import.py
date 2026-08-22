@@ -79,6 +79,9 @@ def convert_entity(e):
     if t == "DIMENSION":
         return _convert_dimension(e, layer)
 
+    if t == "HATCH":
+        return _convert_hatch(e, layer)
+
     return []
 
 
@@ -216,3 +219,20 @@ def _convert_dimension(e, layer):
     except Exception:
         return []   # cota no soportada → se ignora sin romper la importación
     return []
+
+def _convert_hatch(e, layer):
+    """HATCH de DXF → sombreado tkCAD (solo bordes polilínea)."""
+    try:
+        path = e.paths[0]
+        verts = getattr(path, "vertices", None)
+        if verts is None:
+            return []
+        pts = [Point(float(v[0]), float(v[1])) for v in verts]
+        if len(pts) < 3:
+            return []
+        style = "solid" if int(getattr(e.dxf, "solid_fill", 1)) == 1 \
+            else "hatch"
+        return [("hatch", {"points": pts, "style": style,
+                           "spacing": 5.0, "angle": 45.0}, layer)]
+    except Exception:
+        return []

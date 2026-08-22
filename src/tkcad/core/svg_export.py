@@ -2,6 +2,8 @@
 
 import math
 
+from .hatch import hatch_segments
+
 from .dimension import (angular_geometry, angular_ray_ends, angular_text_position, dimension_geometry, dimension_points,
                         dimension_text_position, dimension_text_height)
 from .img_transform import compute_image_fit
@@ -141,6 +143,27 @@ def _entity_svg(entity, w2p, scale, color):
         return [f'<polyline points="{pts}" fill="none" stroke="{color}" '
                 f'stroke-width="{sw}"/>']
 
+    if k == "hatch":
+        out = []
+        pts = d.get("points", [])
+        if len(pts) >= 3:
+            coords = " ".join(
+                f"{w2p(p.x, p.y)[0]:.2f},{w2p(p.x, p.y)[1]:.2f}"
+                for p in pts )
+            if d.get("style", "solid") == "solid":
+                out.append(f'<polygon points="{coords}" '
+                           f'fill="{color}" stroke="none"/>')
+            else:
+                for a, b in hatch_segments(
+                        pts, d.get("spacing", 5.0), d.get("angle", 45.0)):
+                    x1, y1 = w2p(a.x, a.y)
+                    x2, y2 = w2p(b.x, b.y)
+                    out.append(
+                        f'<line x1="{x1:.2f}" y1="{y1:.2f}" '
+                        f'x2="{x2:.2f}" y2="{y2:.2f}" '
+                        f'stroke="{color}" stroke-width="1"/>')
+        return out
+
     return []
 
 
@@ -242,7 +265,10 @@ def _entity_bbox(entity):
             samples_per_segment=10,
             closed=d.get("closed", False),
         )
-    
+    elif k == "hatch":
+        pts = d.get("points", [])
+        if not pts:
+            return None
     else:
         return None
 

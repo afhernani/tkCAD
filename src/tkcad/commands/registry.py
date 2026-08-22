@@ -18,6 +18,7 @@ from .drawing.elipse import ElipseCommand
 from .drawing.texto import TextoCommand
 from .drawing.cota import CotaCommand
 from .drawing.spline import SplineCommand
+from .drawing.sombrea import SombreaCommand
 
 # Modify
 from .modify.mover import MoveCommand
@@ -72,6 +73,7 @@ ALL_COMMANDS: List[Type[Command]] = [
     TextoCommand,
     CotaCommand,
     SplineCommand,
+    SombreaCommand,
     # Modify
     MoveCommand,
     CopyCommand,

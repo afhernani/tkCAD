@@ -147,6 +147,9 @@ def _add_entity(msp, doc, entity) -> bool:
     elif kind == "spline":
         e = _add_spline(msp, data)
 
+    elif kind == "hatch":
+        e = _add_hatch(msp, data)
+
     else:
         return False
 
@@ -158,6 +161,22 @@ def _add_entity(msp, doc, entity) -> bool:
         pass
 
     return True
+
+def _add_hatch(msp, data):
+    """Sombreado tkCAD → HATCH de DXF (sólido o patrón ANSI31)."""
+    hatch = msp.add_hatch()
+    pts = [(p.x, p.y) for p in data["points"]]
+    hatch.paths.add_polyline_path(pts, is_closed=True)
+    if data.get("style", "solid") == "solid":
+        hatch.dxf.solid_fill = 1
+    else:
+        try:
+            hatch.set_pattern_fill(
+                "ANSI31", scale=float(data.get("spacing", 5.0)))
+        except Exception:
+            hatch.dxf.solid_fill = 0
+    return hatch
+
 
 def _add_angular(msp, data):
     g = angular_geometry(data)

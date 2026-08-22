@@ -2,6 +2,8 @@
 
 import math
 
+from .hatch import hatch_segments
+
 from .dimension import angular_geometry, angular_ray_ends, angular_text_position, dimension_geometry, dimension_text_height
 from .img_transform import compute_image_fit
 from .svg_export import _all_bbox   # reutilizamos el bbox del exportador SVG
@@ -99,6 +101,19 @@ def _draw_entity(draw, entity, w2p, scale, color):
         if len(pts) >= 2:
             draw.line(pts, fill=color, width=1)
 
+    if k == "hatch":
+        pts = d.get("points", [])
+        if len(pts) >= 3:
+            coords = [tuple(w2p(p.x, p.y)) for p in pts]
+            if d.get("style", "solid") == "solid":
+                draw.polygon(coords, fill=color)
+            else:
+                for a, b in hatch_segments(
+                        pts, d.get("spacing", 5.0), d.get("angle", 45.0)):
+                    draw.line([tuple(w2p(a.x, a.y)),
+                               tuple(w2p(b.x, b.y))],
+                              fill=color, width=1)
+        return
 
 def _sampled_arc(d, w2p, n=32):
     a0 = math.radians(d["start_angle"])

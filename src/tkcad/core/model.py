@@ -197,6 +197,14 @@ class Document:
             "closed": bool(closed),
         })
 
+    def add_hatch(self, points, style="solid", spacing=5.0, angle=45.0):
+        return self.add_entity("hatch", {
+            "points": [Point(p.x, p.y) for p in points],
+            "style": style,
+            "spacing": float(spacing),
+            "angle": float(angle),
+        })
+
     # --------------------------------------------------------
     # Capas
     # --------------------------------------------------------
@@ -427,7 +435,7 @@ class Document:
             entity.data["start"] = self._move_point(entity.data["start"], dx, dy)
             entity.data["end"] = self._move_point(entity.data["end"], dx, dy)
 
-        elif entity.kind in ("polyline", "polygon"):
+        elif entity.kind in ("polyline", "polygon", "hatch"):
             entity.data["points"] = [
                 self._move_point(p, dx, dy)
                 for p in entity.data["points"]
@@ -572,7 +580,7 @@ class Document:
                 factor,
             )
 
-        elif entity.kind in ("polyline", "polygon"):
+        elif entity.kind in ("polyline", "polygon", "hatch"):
             entity.data["points"] = [
                 self._scale_point(p, base, factor)
                 for p in entity.data["points"]
@@ -681,7 +689,7 @@ class Document:
                 b,
             )
 
-        elif entity.kind in ("polyline", "polygon"):
+        elif entity.kind in ("polyline", "polygon", "hatch"):
             entity.data["points"] = [
                 self._mirror_point(p, a, b)
                 for p in entity.data["points"]
@@ -806,7 +814,7 @@ class Document:
                 angle_deg,
             )
 
-        elif entity.kind in ("polyline", "polygon"):
+        elif entity.kind in ("polyline", "polygon", "hatch"):
             entity.data["points"] = [
                 self._rotate_point(p, base, angle_deg)
                 for p in entity.data["points"]
@@ -1351,7 +1359,7 @@ class Document:
         data = entity.data
         if entity.kind == "line":
             return [data["start"], data["end"]]
-        if entity.kind in ("polyline", "polygon"):
+        if entity.kind in ("polyline", "polygon", "hatch"):
             return list(data["points"])
         if entity.kind in ("circle", "arc"):
             c = data["center"]
@@ -1490,7 +1498,7 @@ class Document:
                 max(start.y, end.y),
             )
         
-        elif entity.kind in ("polyline", "polygon"):
+        elif entity.kind in ("polyline", "polygon", "hatch"):
             points = entity.data["points"]
             if not points:
                 return None
@@ -1641,7 +1649,7 @@ class Document:
         entity = self.get_entity_by_id(entity_id)
         if entity is None:
             return False, "Entidad no encontrada."
-        if entity.kind not in ("polyline", "polygon"):
+        if entity.kind not in ("polyline", "polygon", "hatch"):
             return False, "Solo polilíneas y polígonos tienen vértices."
 
         points = entity.data["points"]
@@ -1668,7 +1676,7 @@ class Document:
         entity = self.get_entity_by_id(entity_id)
         if entity is None:
             return False, "Entidad no encontrada."
-        if entity.kind not in ("polyline", "polygon"):
+        if entity.kind not in ("polyline", "polygon", "hatch"):
             return False, "Solo polilíneas y polígonos tienen vértices."
 
         points = entity.data["points"]
@@ -1733,7 +1741,7 @@ class Document:
 
         if entity.kind == "line":
             props += [("start", pt(d["start"])), ("end", pt(d["end"]))]
-        elif entity.kind in ("polyline", "polygon"):
+        elif entity.kind in ("polyline", "polygon", "hatch"):
             props += [("vértices", len(d["points"]))]
         elif entity.kind == "circle":
             props += [("center", pt(d["center"])), ("radius", round(d["radius"], 3))]
@@ -1830,7 +1838,7 @@ class Document:
         if k == "line":
             d["start"] = fn(d["start"])
             d["end"] = fn(d["end"])
-        elif k in ("polyline", "polygon", "spline"):
+        elif k in ("polyline", "polygon", "spline", "hatch"):
             d["points"] = [fn(p) for p in d["points"]]
         elif k in ("circle", "arc", "ellipse"):
             d["center"] = fn(d["center"])
@@ -2004,7 +2012,7 @@ class Document:
         """Puntos representativos de un data transformado (para bbox)"""
         if kind == "line":
             return [d["start"], d["end"]]
-        if kind in ("polyline", "polygon", "spline"):
+        if kind in ("polyline", "polygon", "spline", "hatch"):
             return list(d["points"])
         if kind in ("circle", "arc"):
             c, r = d["center"], d["radius"]
@@ -2053,6 +2061,10 @@ class Document:
                 if key in d:
                     d[key] = xf(d[key])
             d["offset"] = d.get("offset", 10.0) * scale
+        elif kind == "hatch":
+            d["points"] = [xf(p) for p in d["points"]]
+            d["angle"] = (d.get("angle", 45.0) + rotation) % 360.0
+            
         return transform_block_data(kind, data, base, position,
                                     rotation, scale)
 
