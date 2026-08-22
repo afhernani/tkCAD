@@ -614,66 +614,42 @@ class CadCanvas(tk.Canvas):
         """Método para dibujar la malla de fondo en el canvas."""
         if not self.app.show_grid:
             return
-
         if self.app.grid_size <= 0:
             return
-
         # Cortocircuito: vista corrupta → no dibujar malla
         if not (math.isfinite(self.scale) and self.scale > 1e-9
                 and math.isfinite(self.pan_x) and math.isfinite(self.pan_y)):
             return
-
         w = self.winfo_width()
         h = self.winfo_height()
-
         if w <= 1 or h <= 1:
             return
-
         top_left = self.canvas_to_world(0, 0)
         bottom_right = self.canvas_to_world(w, h)
-
         min_x = min(top_left.x, bottom_right.x)
         max_x = max(top_left.x, bottom_right.x)
-
         min_y = min(top_left.y, bottom_right.y)
         max_y = max(top_left.y, bottom_right.y)
-
         # Paso adaptativo al zoom: al menos 12 píxeles entre líneas
         step = self.app.grid_size
         while step * self.scale < 12:
             step *= 2
-
-        # g = self.app.grid_size
-
         # Protección contra mallas demasiado densas
         if (max_x - min_x) / step > 1000:
             return
-
         if (max_y - min_y) / step > 1000:
             return
-
+        # Verticales: SIEMPRE por world_to_canvas (como las entidades)
         x = math.floor(min_x / step) * step
-
         while x <= max_x:
-            cx = x + self.margin
-
-            self.create_line(
-                cx, 0, cx, h,
-                fill="#222222",
-            )
-
+            cx, _ = self.world_to_canvas(Point(x, 0.0))
+            self.create_line(cx, 0, cx, h, fill="#222222")
             x += step
-
+        # Horizontales
         y = math.floor(min_y / step) * step
-
         while y <= max_y:
             _, cy = self.world_to_canvas(Point(0.0, y))
-
-            self.create_line(
-                0, cy, w, cy,
-                fill="#222222",
-            )
-
+            self.create_line(0, cy, w, cy, fill="#222222")
             y += step
 
     def _ellipse_points(self, entity, samples: int = 64):
